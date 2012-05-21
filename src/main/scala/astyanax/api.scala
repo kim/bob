@@ -16,23 +16,10 @@ trait Api {
 
 
     def login(username: String, password: String): Task[Unit] =
-        mkTask(_._1.login(new AuthenticationRequest(Map(username -> password)), _))
+        mkTask(_._1.login(AuthReq(username, password), _))
 
     def setKeyspace(name: String): Task[Unit] =
         mkTask(_._1.set_keyspace(name, _))
-
-    def get
-        ( key: String
-        , cf:  String
-        , col: String
-        , cl:  ConsistencyLevel
-        )
-    : Task[ColumnOrSuperColumn] =
-        get(
-          ByteBuffer.wrap(key.getBytes)
-        , new ColumnPath(cf).setColumn(col.getBytes)
-        , cl
-        )
 
     def get
         ( key: ByteBuffer
@@ -95,15 +82,6 @@ trait Api {
         )
     : Task[Seq[KeySlice]] =
         mkTask(_._1.get_paged_slice(cf, kr, startCol, cl, _))
-
-    def getIndexedSlices
-        ( cp:  ColumnParent
-        , idx: IndexClause
-        , sp:  SlicePredicate
-        , cl:  ConsistencyLevel
-        )
-    : Task[Seq[KeySlice]] =
-        mkTask(_._1.get_indexed_slices(cp, idx, sp, cl, _))
 
     def insert
         ( key: ByteBuffer
@@ -177,8 +155,7 @@ trait Api {
     def describeKeyspace(keyspace: String): Task[KsDef] =
         mkTask(_._1.describe_keyspace(keyspace, _))
 
-    // "system" operations
-
+    // experimental  API for hadoop/parallel query support
     def describeSplits
         ( cf:           String
         , startToken:   String
@@ -188,22 +165,26 @@ trait Api {
     : Task[List[String]] =
         mkTask(_._1.describe_splits(cf, startToken, endToken, keysPerSplit, _))
 
-    def systemAddColumnFamily(cfdef: CfDef): Task[String] =
+    // "system" operations
+
+    type SchemaId = String
+
+    def systemAddColumnFamily(cfdef: CfDef): Task[SchemaId] =
         mkTask(_._1.system_add_column_family(cfdef, _))
 
-    def systemDropColumnFamily(cf: String): Task[String] =
+    def systemDropColumnFamily(cf: String): Task[SchemaId] =
         mkTask(_._1.system_drop_column_family(cf, _))
 
-    def systemAddKeyspace(ksdef: KsDef): Task[String] =
+    def systemAddKeyspace(ksdef: KsDef): Task[SchemaId] =
         mkTask(_._1.system_add_keyspace(ksdef, _))
 
-    def systemDropKeyspace(ks: String): Task[String] =
+    def systemDropKeyspace(ks: String): Task[SchemaId] =
         mkTask(_._1.system_drop_keyspace(ks, _))
 
-    def systemUpdateKeyspace(ksdef: KsDef): Task[String] =
+    def systemUpdateKeyspace(ksdef: KsDef): Task[SchemaId] =
         mkTask(_._1.system_update_keyspace(ksdef, _))
 
-    def systemUpdateColumnFamily(cfdef: CfDef): Task[String] =
+    def systemUpdateColumnFamily(cfdef: CfDef): Task[SchemaId] =
         mkTask(_._1.system_update_column_family(cfdef, _))
 
 
@@ -224,12 +205,10 @@ trait Api {
     def setCqlVersion(v: String): Task[Unit] =
         mkTask(_._1.set_cql_version(v, _))
 
+
     private object Internal {
 
         import Cassandra.AsyncClient._
-        type Login       = login_call
-        type SetKeyspace = set_keyspace_call
-        type Get         = get_call
 
         implicit def mkTask[A](f: (Client, SyncVar[Result[A]]) => Unit)
         : Task[A] =
@@ -244,11 +223,71 @@ trait Api {
                       // interface of `TAsyncMethodCall`, but not declared in
                       // the base class, so generated methods (which exist even
                       // for `void` results) don't inherit
-                      case x: Login =>
+                      case x: login_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: Get =>
+                      case x: get_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: SetKeyspace =>
+                      case x: set_keyspace_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: get_slice_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: get_count_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: multiget_slice_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: multiget_count_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: get_range_slices_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: get_paged_slice_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: insert_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: add_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: remove_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: remove_counter_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: batch_mutate_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: truncate_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: describe_schema_versions_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: describe_keyspaces_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: describe_cluster_name_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: describe_version_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: describe_partitioner_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: describe_snitch_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: describe_keyspace_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: describe_splits_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: system_add_column_family_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: system_drop_column_family_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: system_add_keyspace_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: system_drop_keyspace_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: system_update_keyspace_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: system_update_column_family_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: execute_cql_query_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: prepare_cql_query_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: execute_prepared_cql_query_call =>
+                          p put Right(x.getResult.asInstanceOf[B])
+                      case x: set_cql_version_call =>
                           p put Right(x.getResult.asInstanceOf[B])
                       case x => sys.error("wtf?")
                   }}
@@ -265,6 +304,10 @@ trait Api {
             )
         : JMap[ByteBuffer,JMap[String,JList[Mutation]]] =
             mm.mapValues(_.mapValues(_.asJava).asJava).asJava
+
+        implicit def AuthReq(username: String, password: String)
+        : AuthenticationRequest =
+            new AuthenticationRequest(Map(username -> password))
     }
 }
 
