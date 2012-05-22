@@ -63,7 +63,7 @@ trait Types {
     : Promise[A] = {
         val res = new SyncVar[Result[A]]
         f(c, res)
-        promise(res.take -> c)
+        promise(res.get -> c)
     }
 
     def promise[A](g: => (Result[A], Client)): Promise[A] =
