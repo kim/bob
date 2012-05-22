@@ -7,11 +7,19 @@ trait Conversions {
     import org.apache.cassandra.thrift
 
 
-    type ConsistencyLevel = thrift.ConsistencyLevel
-    type CL = ConsistencyLevel
+    sealed trait ConsistencyLevel
+    case object AnyConsistency extends ConsistencyLevel
+    case object One            extends ConsistencyLevel
+    case object Two            extends ConsistencyLevel
+    case object Three          extends ConsistencyLevel
+    case object Quorum         extends ConsistencyLevel
+    case object LocalQuorum    extends ConsistencyLevel
+    case object EachQuorum     extends ConsistencyLevel
+    case object All            extends ConsistencyLevel
 
-    type Compression = thrift.Compression
-
+    sealed trait Compression
+    case object Gzip          extends Compression
+    case object NoCompression extends Compression
 
     case class Key(value: Array[Byte])
     object Key {
@@ -112,6 +120,24 @@ trait Conversions {
         )
 
 
+    implicit def consistencyLevelToThrift(cl: ConsistencyLevel)
+    : thrift.ConsistencyLevel =
+        cl match {
+            case AnyConsistency => thrift.ConsistencyLevel.ANY
+            case One            => thrift.ConsistencyLevel.ONE
+            case Two            => thrift.ConsistencyLevel.TWO
+            case Three          => thrift.ConsistencyLevel.THREE
+            case Quorum         => thrift.ConsistencyLevel.QUORUM
+            case LocalQuorum    => thrift.ConsistencyLevel.LOCAL_QUORUM
+            case EachQuorum     => thrift.ConsistencyLevel.EACH_QUORUM
+            case All            => thrift.ConsistencyLevel.ALL
+        }
+
+    implicit def compressionToThrift(c: Compression): thrift.Compression =
+        c match {
+            case Gzip          => thrift.Compression.GZIP
+            case NoCompression => thrift.Compression.NONE
+        }
 
     implicit def keyToByteBuffer(k: Key): ByteBuffer =
         ByteBuffer.wrap(k.value)
