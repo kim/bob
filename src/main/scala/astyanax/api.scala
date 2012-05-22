@@ -24,7 +24,7 @@ trait Api {
     def get
         ( key: ByteBuffer
         , cp:  ColumnPath
-        , cl:  ConsistencyLevel
+        , cl:  ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[ColumnOrSuperColumn] =
         mkTask(_._1.get(key, cp, cl, _))
@@ -33,7 +33,7 @@ trait Api {
         ( key: ByteBuffer
         , cp:  ColumnParent
         , sp:  SlicePredicate
-        , cl:  ConsistencyLevel
+        , cl:  ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Seq[ColumnOrSuperColumn]] =
         mkTask(_._1.get_slice(key, cp, sp, cl, _))
@@ -42,7 +42,7 @@ trait Api {
         ( key: ByteBuffer
         , cp:  ColumnParent
         , sp:  SlicePredicate
-        , cl:  ConsistencyLevel
+        , cl:  ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Int] =
         mkTask(_._1.get_count(key, cp, sp, cl, _))
@@ -51,7 +51,7 @@ trait Api {
         ( keys: Seq[ByteBuffer]
         , cp:   ColumnParent
         , sp:   SlicePredicate
-        , cl:   ConsistencyLevel
+        , cl:   ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Map[ByteBuffer,Seq[ColumnOrSuperColumn]]] =
         mkTask(_._1.multiget_slice(keys, cp, sp, cl, _))
@@ -60,7 +60,7 @@ trait Api {
         ( keys: Seq[ByteBuffer]
         , cp:   ColumnParent
         , sp:   SlicePredicate
-        , cl:   ConsistencyLevel
+        , cl:   ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Map[ByteBuffer,Int]] =
         mkTask(_._1.multiget_count(keys, cp, sp, cl, _))
@@ -69,7 +69,7 @@ trait Api {
         ( cp: ColumnParent
         , sp: SlicePredicate
         , kr: KeyRange
-        , cl: ConsistencyLevel
+        , cl: ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Seq[KeySlice]] =
         mkTask(_._1.get_range_slices(cp, sp, kr, cl, _))
@@ -78,7 +78,7 @@ trait Api {
         ( cf:       String
         , kr:       KeyRange
         , startCol: ByteBuffer
-        , cl:       ConsistencyLevel
+        , cl:       ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Seq[KeySlice]] =
         mkTask(_._1.get_paged_slice(cf, kr, startCol, cl, _))
@@ -87,7 +87,7 @@ trait Api {
         ( key: ByteBuffer
         , cp:  ColumnParent
         , col: Column
-        , cl:  ConsistencyLevel
+        , cl:  ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Unit] =
         mkTask(_._1.insert(key, cp, col, cl, _))
@@ -96,7 +96,7 @@ trait Api {
         ( key: ByteBuffer
         , cp:  ColumnParent
         , col: CounterColumn
-        , cl:  ConsistencyLevel
+        , cl:  ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Unit] =
         mkTask(_._1.add(key, cp, col, cl, _))
@@ -105,7 +105,7 @@ trait Api {
         ( key: ByteBuffer
         , cp:  ColumnPath
         , ts:  Long
-        , cl:  ConsistencyLevel
+        , cl:  ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Unit] =
         mkTask(_._1.remove(key, cp, ts, cl, _))
@@ -113,14 +113,14 @@ trait Api {
     def removeCounter
         ( key: ByteBuffer
         , cp:  ColumnPath
-        , cl:  ConsistencyLevel
+        , cl:  ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Unit] =
         mkTask(_._1.remove_counter(key, cp, cl, _))
 
     def batchMutate
         ( mutations: Map[ByteBuffer,Map[String,Seq[Mutation]]]
-        , cl:        ConsistencyLevel
+        , cl:        ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Unit] =
         mkTask(_._1.batch_mutate(mutationMapToJava(mutations), cl, _))

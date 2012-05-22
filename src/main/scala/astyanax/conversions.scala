@@ -40,14 +40,14 @@ trait Conversions {
 
     case class SlicePredicate(cols: Seq[Array[Byte]], range: SliceRange)
 
-    case class ColumnParent(cf: String, scol: Option[Array[Byte]])
+    case class ColumnParent(cf: String, scol: Option[Array[Byte]] = None)
 
     sealed trait Col
     case class Column
         ( name:      Array[Byte]
-        , value:     Option[Array[Byte]]
-        , timestamp: Option[Long]
-        , ttl:       Option[Int]
+        , value:     Option[Array[Byte]] = None
+        , timestamp: Option[Long]        = None
+        , ttl:       Option[Int]         = None
         )
         extends Col
     case class SuperColumn
@@ -73,8 +73,8 @@ trait Conversions {
         extends Mutation
     case class Deletion
         ( timestamp: Long
-        , supercol:  Option[Array[Byte]]
-        , predicate: Option[SlicePredicate]
+        , supercol:  Option[Array[Byte]]    = None
+        , predicate: Option[SlicePredicate] = None
         )
         extends Mutation
 
@@ -82,13 +82,13 @@ trait Conversions {
         ( start:           String
         , end:             String
         , endpoints:       Seq[String]
-        , rpcEndpoints:    Option[Seq[String]]
-        , endpointDetails: Option[Seq[EndpointDetails]]
+        , rpcEndpoints:    Option[Seq[String]]          = None
+        , endpointDetails: Option[Seq[EndpointDetails]] = None
         )
     case class EndpointDetails
         ( host:       String
         , datacenter: String
-        , rack:       Option[String]
+        , rack:       Option[String] = None
         )
 
     sealed trait CqlResult
@@ -101,7 +101,7 @@ trait Conversions {
     case class CqlPreparedResult
         ( id:            Int
         , count:         Int
-        , variableTypes: Option[Seq[String]]
+        , variableTypes: Option[Seq[String]] = None
         )
 
     case class CqlMetadata
