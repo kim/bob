@@ -201,15 +201,6 @@ trait Conversions {
         .orElse(Option(c.counter_super_column).map(counterSuperColumnFromThrift))
         .get
 
-    implicit def byteBufferToByteArray(bb: ByteBuffer): Array[Byte] =
-        if (bb.hasArray)
-            bb.array
-        else {
-            val ba = new Array[Byte](bb.remaining)
-            bb.get(ba)
-            ba
-        }
-
     implicit def mutationToThrift(m: Mutation): thrift.Mutation =
         m match {
             case Insert(x) =>
@@ -238,6 +229,23 @@ trait Conversions {
         r
     }
 
+    implicit def byteBufferToByteArray(bb: ByteBuffer): Array[Byte] =
+        if (bb.hasArray)
+            bb.array
+        else {
+            val ba = new Array[Byte](bb.remaining)
+            bb.get(ba)
+            ba
+        }
+
+    implicit def stringToByteArray(s: String): Array[Byte] =
+        s.getBytes
+
+    implicit def byteArrayToString(ba: Array[Byte]): String =
+        new String(ba)
+
+    implicit def byteArrayToByteByffer(ba: Array[Byte]): ByteBuffer =
+        ByteBuffer.wrap(ba)
 }
 
 object Conversions extends Conversions
