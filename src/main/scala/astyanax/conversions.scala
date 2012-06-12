@@ -28,11 +28,14 @@ trait Conversions {
 
     case class ColumnPath(cf: String, col: Array[Byte])
     object ColumnPath {
-        def apply(cf: String, col: String): ColumnPath = ColumnPath(cf, col.getBytes)
+        def apply(cf: String, col: String): ColumnPath =
+            ColumnPath(cf, col.getBytes)
     }
 
-    case class SuperColumnPath(cf: String, scol: Array[Byte]) {
-        def this(cf: String, scol: String) = this(cf, scol.getBytes)
+    case class SuperColumnPath(cf: String, scol: Array[Byte])
+    object SuperColumnPath {
+        def apply(cf: String, scol: String): SuperColumnPath =
+            SuperColumnPath(cf, scol.getBytes)
     }
 
     case class SliceRange
@@ -41,9 +44,15 @@ trait Conversions {
         , reversed: Boolean = false
         , count:    Int = 100
         )
-    {
-        def this(start: String, finish: String, reversed: Boolean, count: Int) =
-            this(start.getBytes, finish.getBytes, reversed, count)
+    object SliceRange {
+        def apply
+            ( start:    String
+            , finish:   String
+            , reversed: Boolean
+            , count:    Int
+            )
+        : SliceRange =
+            SliceRange(start.getBytes, finish.getBytes, reversed, count)
     }
 
     case class SlicePredicate(cols: Seq[Array[Byte]], range: SliceRange)

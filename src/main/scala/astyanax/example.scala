@@ -2,19 +2,45 @@ package astyanax
 
 object Example extends App {
 
-    import scala.concurrent.SyncVar
-    import org.apache.cassandra.thrift._
     import Astyanax._
 
+    val Keyspace     = "Counters"
+    val ColumnFamily = "ByHour_p_o_t"
 
     runCassandra(CassandraConfig(), ("localhost", 9160)) { c =>
         val r = for {
-          _ <- setKeyspace("Counters")
-          y <- get("yyy", "ByHour_p_o_t", "bar", ConsistencyLevel.ONE)
-          z <- get("zzz", "ByHour_p_o_t", "bar", ConsistencyLevel.ONE)
+          _ <- setKeyspace(Keyspace)
+          y <- get(Key("xxx"), ColumnPath(ColumnFamily, "bar"))
+          z <- get(Key("zzz"), ColumnPath(ColumnFamily, "bar"))
         } yield y :: z :: Nil
 
-        println(runT(r)(c).get) // prints 'Result(Left(NotFoundException()))'
+        // prints 'Result(Left(NotFoundException()))'
+        println(runT(r)(c).get)
+
+        // perform a side-effect asynchronously
+        def showCounterColumn(c: Col): Unit =
+            c match { case CounterColumn(_, v) => println(v) }
+
+        val s = for {
+          _ <- setKeyspace(Keyspace)
+          _ <- add(
+                 Key("yyy")
+               , ColumnParent(ColumnFamily)
+               , CounterColumn("bar", 1)
+               , All
+               )
+          y <- get(Key("yyy"), ColumnPath(ColumnFamily, "bar"))
+          _ <- showCounterColumn(y)
+          _ <- add(
+                 Key("yyy")
+               , ColumnParent(ColumnFamily)
+               , CounterColumn("bar", -1)
+               )
+          z <- get(Key("yyy"), ColumnPath(ColumnFamily, "bar"))
+          _ <- showCounterColumn(z)
+        } yield y :: z :: Nil
+
+        runT(s)(c).get // blocking anyway for completion
     }
 }
 
