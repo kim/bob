@@ -8,8 +8,10 @@ trait Types {
     import org.apache.thrift.transport._
 
 
-    // we need to thread the TTransport to be able to close the connection
-    type Client = (Cassandra.AsyncClient, TTransport)
+    trait Client {
+        val thrift: Cassandra.AsyncClient
+        def close()
+    }
 
     // basically an Either monad, encapsulates the response (`A`), or any errors
     case class Result[A](value: Either[Throwable, A]) {
@@ -69,6 +71,35 @@ trait Types {
     def promise[A](g: => (Result[A], Client)): Promise[A] =
         new Promise[A] { def get = g }
 
+
+    // a handy reader monad
+    trait Reader[A] {
+        def apply[B](b: B): A
+
+        def map[B](f: A => B): Reader[B] = new Reader[B] {
+            def apply[C](x: C) = f(Reader.this.apply(x))
+        }
+
+        def flatMap[B](f: A => Reader[B]): Reader[B] = new Reader[B] {
+            def apply[C](x: C) = f(Reader.this.apply(x))(x)
+        }
+    }
+
+    trait State[S, +A] {
+        def apply(s: S): (S, A)
+
+        def eval(s: S): A = apply(s)._2
+
+        def map[B](f: A => B): State[S, B] =
+            state(apply(_) match { case (s,a) => s -> f(a) })
+
+        def flatMap[B](f: A => State[S, B]): State[S, B] =
+            state(apply(_) match { case (s,a) => f(a)(s) })
+    }
+
+    def state[S, A](f: S => (S, A)): State[S, A] = new State[S, A] {
+        def apply(s: S) = f(s)
+    }
 }
 
 object Types extends Types

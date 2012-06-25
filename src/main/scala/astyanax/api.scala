@@ -16,10 +16,10 @@ trait Api {
 
 
     def login(username: String, password: String): Task[Unit] =
-        mkTask(_._1.login(AuthReq(username, password), _))
+        mkTask(_.thrift.login(AuthReq(username, password), _))
 
     def setKeyspace(name: String): Task[Unit] =
-        mkTask(_._1.set_keyspace(name, _))
+        mkTask(_.thrift.set_keyspace(name, _))
 
     def get
         ( key: ByteBuffer
@@ -27,7 +27,7 @@ trait Api {
         , cl:  ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[ColumnOrSuperColumn] =
-        mkTask(_._1.get(key, cp, cl, _))
+        mkTask(_.thrift.get(key, cp, cl, _))
 
     def getSlice
         ( key: ByteBuffer
@@ -36,7 +36,7 @@ trait Api {
         , cl:  ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Seq[ColumnOrSuperColumn]] =
-        mkTask(_._1.get_slice(key, cp, sp, cl, _))
+        mkTask(_.thrift.get_slice(key, cp, sp, cl, _))
 
     def getCount
         ( key: ByteBuffer
@@ -45,7 +45,7 @@ trait Api {
         , cl:  ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Int] =
-        mkTask(_._1.get_count(key, cp, sp, cl, _))
+        mkTask(_.thrift.get_count(key, cp, sp, cl, _))
 
     def multigetSlice
         ( keys: Seq[ByteBuffer]
@@ -54,7 +54,7 @@ trait Api {
         , cl:   ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Map[ByteBuffer,Seq[ColumnOrSuperColumn]]] =
-        mkTask(_._1.multiget_slice(keys, cp, sp, cl, _))
+        mkTask(_.thrift.multiget_slice(keys, cp, sp, cl, _))
 
     def multigetCount
         ( keys: Seq[ByteBuffer]
@@ -63,7 +63,7 @@ trait Api {
         , cl:   ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Map[ByteBuffer,Int]] =
-        mkTask(_._1.multiget_count(keys, cp, sp, cl, _))
+        mkTask(_.thrift.multiget_count(keys, cp, sp, cl, _))
 
     def getRangeSlices
         ( cp: ColumnParent
@@ -72,7 +72,7 @@ trait Api {
         , cl: ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Seq[KeySlice]] =
-        mkTask(_._1.get_range_slices(cp, sp, kr, cl, _))
+        mkTask(_.thrift.get_range_slices(cp, sp, kr, cl, _))
 
     def getPagedSlice
         ( cf:       String
@@ -81,7 +81,7 @@ trait Api {
         , cl:       ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Seq[KeySlice]] =
-        mkTask(_._1.get_paged_slice(cf, kr, startCol, cl, _))
+        mkTask(_.thrift.get_paged_slice(cf, kr, startCol, cl, _))
 
     def insert
         ( key: ByteBuffer
@@ -90,7 +90,7 @@ trait Api {
         , cl:  ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Unit] =
-        mkTask(_._1.insert(key, cp, col, cl, _))
+        mkTask(_.thrift.insert(key, cp, col, cl, _))
 
     def add
         ( key: ByteBuffer
@@ -99,7 +99,7 @@ trait Api {
         , cl:  ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Unit] =
-        mkTask(_._1.add(key, cp, col, cl, _))
+        mkTask(_.thrift.add(key, cp, col, cl, _))
 
     def remove
         ( key: ByteBuffer
@@ -108,7 +108,7 @@ trait Api {
         , cl:  ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Unit] =
-        mkTask(_._1.remove(key, cp, ts, cl, _))
+        mkTask(_.thrift.remove(key, cp, ts, cl, _))
 
     def removeCounter
         ( key: ByteBuffer
@@ -116,44 +116,44 @@ trait Api {
         , cl:  ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Unit] =
-        mkTask(_._1.remove_counter(key, cp, cl, _))
+        mkTask(_.thrift.remove_counter(key, cp, cl, _))
 
     def batchMutate
         ( mutations: Map[ByteBuffer,Map[String,Seq[Mutation]]]
         , cl:        ConsistencyLevel = ConsistencyLevel.ONE
         )
     : Task[Unit] =
-        mkTask(_._1.batch_mutate(mutationMapToJava(mutations), cl, _))
+        mkTask(_.thrift.batch_mutate(mutationMapToJava(mutations), cl, _))
 
     def truncate(cf: String): Task[Unit] =
-        mkTask(_._1.truncate(cf, _))
+        mkTask(_.thrift.truncate(cf, _))
 
 
     // "Meta-APIs"
 
     def describeSchemaVersions(): Task[Map[String,Seq[String]]] =
-        mkTask(_._1.describe_schema_versions(_))
+        mkTask(_.thrift.describe_schema_versions(_))
 
     def describeKeyspaces(): Task[Seq[KsDef]] =
-        mkTask(_._1.describe_keyspaces(_))
+        mkTask(_.thrift.describe_keyspaces(_))
 
     def describeClusterName(): Task[String] =
-        mkTask(_._1.describe_cluster_name(_))
+        mkTask(_.thrift.describe_cluster_name(_))
 
     def describeVersion(): Task[String] =
-        mkTask(_._1.describe_version(_))
+        mkTask(_.thrift.describe_version(_))
 
     def describeRing(keyspace: String): Task[Seq[TokenRange]] =
-        mkTask(_._1.describe_ring(keyspace, _))
+        mkTask(_.thrift.describe_ring(keyspace, _))
 
     def describePartitioner(): Task[String] =
-        mkTask(_._1.describe_partitioner(_))
+        mkTask(_.thrift.describe_partitioner(_))
 
     def describeSnitch(): Task[String] =
-        mkTask(_._1.describe_snitch(_))
+        mkTask(_.thrift.describe_snitch(_))
 
     def describeKeyspace(keyspace: String): Task[KsDef] =
-        mkTask(_._1.describe_keyspace(keyspace, _))
+        mkTask(_.thrift.describe_keyspace(keyspace, _))
 
     // experimental  API for hadoop/parallel query support
     def describeSplits
@@ -163,47 +163,47 @@ trait Api {
         , keysPerSplit: Int
         )
     : Task[List[String]] =
-        mkTask(_._1.describe_splits(cf, startToken, endToken, keysPerSplit, _))
+        mkTask(_.thrift.describe_splits(cf, startToken, endToken, keysPerSplit, _))
 
     // "system" operations
 
     type SchemaId = String
 
     def systemAddColumnFamily(cfdef: CfDef): Task[SchemaId] =
-        mkTask(_._1.system_add_column_family(cfdef, _))
+        mkTask(_.thrift.system_add_column_family(cfdef, _))
 
     def systemDropColumnFamily(cf: String): Task[SchemaId] =
-        mkTask(_._1.system_drop_column_family(cf, _))
+        mkTask(_.thrift.system_drop_column_family(cf, _))
 
     def systemAddKeyspace(ksdef: KsDef): Task[SchemaId] =
-        mkTask(_._1.system_add_keyspace(ksdef, _))
+        mkTask(_.thrift.system_add_keyspace(ksdef, _))
 
     def systemDropKeyspace(ks: String): Task[SchemaId] =
-        mkTask(_._1.system_drop_keyspace(ks, _))
+        mkTask(_.thrift.system_drop_keyspace(ks, _))
 
     def systemUpdateKeyspace(ksdef: KsDef): Task[SchemaId] =
-        mkTask(_._1.system_update_keyspace(ksdef, _))
+        mkTask(_.thrift.system_update_keyspace(ksdef, _))
 
     def systemUpdateColumnFamily(cfdef: CfDef): Task[SchemaId] =
-        mkTask(_._1.system_update_column_family(cfdef, _))
+        mkTask(_.thrift.system_update_column_family(cfdef, _))
 
 
     // CQL
 
     def executeCqlQuery(query: ByteBuffer, comp: Compression)
     : Task[CqlResult] =
-        mkTask(_._1.execute_cql_query(query, comp, _))
+        mkTask(_.thrift.execute_cql_query(query, comp, _))
 
     def prepareCqlQuery(query: ByteBuffer, comp: Compression)
     : Task[CqlPreparedResult] =
-        mkTask(_._1.prepare_cql_query(query, comp, _))
+        mkTask(_.thrift.prepare_cql_query(query, comp, _))
 
     def executePreparedCqlQuery(id: Int, values: Seq[ByteBuffer])
     : Task[CqlResult] =
-        mkTask(_._1.execute_prepared_cql_query(id, values, _))
+        mkTask(_.thrift.execute_prepared_cql_query(id, values, _))
 
     def setCqlVersion(v: String): Task[Unit] =
-        mkTask(_._1.set_cql_version(v, _))
+        mkTask(_.thrift.set_cql_version(v, _))
 
 
     private object Internal {
@@ -219,7 +219,7 @@ trait Api {
             new AsyncMethodCallback[A] {
                 def onComplete(r: A) {
                   try { r match {
-                      // damn you, thift authors: `getResult` is part of the
+                      // damn you, thrift authors: `getResult` is part of the
                       // interface of `TAsyncMethodCall`, but not declared in
                       // the base class, so generated methods (which exist even
                       // for `void` results) don't inherit
