@@ -15,6 +15,9 @@ object ResourcePool {
     import scala.collection.JavaConversions._
 
 
+    type CreateResource[A]  = Unit => A
+    type DestroyResource[A] = A => Unit
+
     final case class Entry[A]
         ( entry:   A
         , lastUse: Date
@@ -25,17 +28,18 @@ object ResourcePool {
         )
 
     sealed case class Pool[A]
-        ( create:       Function1[Unit, A]
-        , destroy:      Function1[A, Unit]
+        ( create:       CreateResource[A]
+        , destroy:      DestroyResource[A]
         , numStripes:   Int
         , idleTime:     (Long, TimeUnit)
         , maxResources: Int
         , localPools:   IndexedSeq[LocalPool[A]]
         )
 
+
     def createPool[A]
-        ( create:       Function1[Unit, A]
-        , destroy:      Function1[A, Unit]
+        ( create:       CreateResource[A]
+        , destroy:      DestroyResource[A]
         , numStripes:   Int
         , idleTime:     (Long, TimeUnit)
         , maxResources: Int
@@ -97,7 +101,7 @@ object ResourcePool {
 
     private[this]
     def reap[A]
-      ( destroy:  Function1[A, Unit]
+      ( destroy:  DestroyResource[A]
       , idleTime: (Long, TimeUnit)
       , pools:    IndexedSeq[LocalPool[A]]
       )
@@ -116,7 +120,7 @@ object ResourcePool {
 
     private[this]
     def toMillis(idleTime: (Long, TimeUnit)): Long =
-      idleTime match { case (i, unit) => unit.toMillis(i) }
+        idleTime match { case (i, unit) => unit.toMillis(i) }
 }
 
 
