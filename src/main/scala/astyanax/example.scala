@@ -9,6 +9,8 @@ object Example extends App {
 
     val conf = CassandraConfig(Seq("localhost" -> 9160))
 
+    // a simple sequence of actions, intended to show how the computation stops
+    // after the first failed action
     val r = for {
         _ <- setKeyspace(Keyspace)
         y <- get(Key("xxx"), ColumnPath(ColumnFamily, "bar"))
@@ -44,8 +46,13 @@ object Example extends App {
 
 
     val res = runCassandra(conf) { for(a <- r; b <- s) yield a :: b :: Nil }
-
     println(res)
+
+    // if your code isn't in monadic style, you can make a `Cassandra` holding
+    // the (connection) state and pass it around
+    val cass = newCassandra(conf)
+    println(cass(r))
+    println(cass(s))
 }
 
 

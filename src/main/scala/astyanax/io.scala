@@ -13,10 +13,13 @@ trait IO {
 
     import scala.collection.JavaConversions._
 
-    import org.apache.cassandra.thrift._
-    import org.apache.thrift.async._
-    import org.apache.thrift.protocol._
-    import org.apache.thrift.transport._
+    import org.apache.cassandra.thrift.{ Cassandra => Thrift }
+    import org.apache.thrift.async.TAsyncClientManager
+    import org.apache.thrift.protocol.{ TBinaryProtocol
+                                      , TProtocol
+                                      , TProtocolFactory
+                                      }
+    import org.apache.thrift.transport.{ TNonblockingSocket, TTransport }
 
     import ResourcePool._
     import Types._
@@ -33,13 +36,24 @@ trait IO {
         , exec: ExecutorService
         )
 
-    type Cassandra[A] = State[CassandraState, A]
+    type MonadCassandra[A] = State[CassandraState, A]
 
-    def runCassandra[A](conf: CassandraConfig)(m: Cassandra[A]): A =
-        m.apply(mkCassandraState(conf))._2
+    case class Cassandra(private val s: CassandraState) {
+        final def apply[A](m: MonadCassandra[A]): A = runWith(s)(m)
+    }
+
+
+    def runCassandra[A](conf: CassandraConfig)(m: MonadCassandra[A]): A =
+        runWith(mkCassandraState(conf))(m)
+
+    def runWith[A](s: CassandraState)(m: MonadCassandra[A]): A =
+        m.apply(s)._2
+
+    def newCassandra(conf: CassandraConfig): Cassandra =
+        Cassandra(mkCassandraState(conf))
 
     implicit
-    def lift[A](t: Task[A]): Cassandra[Result[A]] = {
+    def lift[A](t: Task[A]): MonadCassandra[Result[A]] = {
         def go[A](t: Task[A])(s: CassandraState): Future[Result[A]] =
             s.exec.submit(withResource(s.pool) { c =>
                 val ret = t(c).get._1
@@ -57,7 +71,7 @@ trait IO {
     private[this]
     def mkClient(host: String, port: Int, mgr: TAsyncClientManager): Client =
         new Client {
-            lazy val thrift = new Cassandra.AsyncClient(factory, mgr, sock)
+            lazy val thrift = new Thrift.AsyncClient(factory, mgr, sock)
             def close() { sock.close() }
 
             private[this] lazy val sock    = new TNonblockingSocket(host, port)

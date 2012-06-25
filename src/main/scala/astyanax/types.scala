@@ -72,19 +72,6 @@ trait Types {
         new Promise[A] { def get = g }
 
 
-    // a handy reader monad
-    trait Reader[A] {
-        def apply[B](b: B): A
-
-        def map[B](f: A => B): Reader[B] = new Reader[B] {
-            def apply[C](x: C) = f(Reader.this.apply(x))
-        }
-
-        def flatMap[B](f: A => Reader[B]): Reader[B] = new Reader[B] {
-            def apply[C](x: C) = f(Reader.this.apply(x))(x)
-        }
-    }
-
     trait State[S, +A] {
         def apply(s: S): (S, A)
 
