@@ -95,7 +95,8 @@ object ResourcePool {
         pool.destroy(r)
     }
 
-    private[this] def reap[A]
+    private[this]
+    def reap[A]
       ( destroy:  Function1[A, Unit]
       , idleTime: (Long, TimeUnit)
       , pools:    IndexedSeq[LocalPool[A]]
@@ -113,7 +114,8 @@ object ResourcePool {
         }.foreach(e => try { destroy(e) } catch { case _ => () })
     }
 
-    private[this] def toMillis(idleTime: (Long, TimeUnit)): Long =
+    private[this]
+    def toMillis(idleTime: (Long, TimeUnit)): Long =
       idleTime match { case (i, unit) => unit.toMillis(i) }
 }
 

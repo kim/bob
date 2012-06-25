@@ -38,7 +38,7 @@ trait IO {
 
     type MonadCassandra[A] = State[CassandraState, A]
 
-    case class Cassandra(private val s: CassandraState) {
+    final case class Cassandra(private val s: CassandraState) {
         final def apply[A](m: MonadCassandra[A]): A = runWith(s)(m)
     }
 
@@ -53,7 +53,7 @@ trait IO {
         Cassandra(mkCassandraState(conf))
 
     implicit
-    def lift[A](t: Task[A]): MonadCassandra[Result[A]] = {
+    def lift[A](t: Task[A]): MonadCassandra[Future[Result[A]]] = {
         def go[A](t: Task[A])(s: CassandraState): Future[Result[A]] =
             s.exec.submit(withResource(s.pool) { c =>
                 val ret = t(c).get._1
@@ -61,12 +61,21 @@ trait IO {
                 ret
             })
 
-        state { s =>
-            val ret = try   { go(t)(s).get }
-                      catch { case e => Result[A](Left(e)) }
-            s -> ret
-        }
+        state(s => s -> {
+            try   { go(t)(s) }
+            catch { case e => future(Result[A](Left(e))) }
+        })
     }
+
+    private[this]
+    def future[A](r: => Result[A]): Future[Result[A]] =
+        new Future[Result[A]] {
+            def get() = r
+            def get(timout: Long, unit: TimeUnit) = get
+            def cancel(mayInterrupt: Boolean) = false
+            def isCancelled() = false
+            def isDone() = true
+        }
 
     private[this]
     def mkClient(host: String, port: Int, mgr: TAsyncClientManager): Client =
