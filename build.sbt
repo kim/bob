@@ -18,5 +18,3 @@ scalacOptions ++= Seq(
                   , "-Xlog-implicits"
                   //, "-Ydebug"
                   )
-
-javaSource <<= baseDirectory(_ / "foo")

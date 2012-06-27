@@ -2,57 +2,63 @@ package astyanax
 
 object Example extends App {
 
-    import Astyanax._
+    import Api._
+    import Codecs._
+    import Types._
+    import Typeclasses._
+    import IO._
 
-    val Keyspace     = "Counters"
-    val ColumnFamily = "ByHour_p_o_t"
-
-    val conf = CassandraConfig(Seq("localhost" -> 9160))
+    val Conf = CassandraConfig(Seq("localhost" -> 9160))
+    val Cf   = CounterColumnFamily[String, Long](
+      "Counters"
+    , "ByHour_p_o_t"
+    , Utf8Codec
+    , LongCodec
+    )
 
     // a simple sequence of actions, intended to show how the computation stops
     // after the first failed action
     val r = for {
-        _ <- setKeyspace(Keyspace)
-        y <- get(Key("xxx"), ColumnPath(ColumnFamily, "bar"))
-        z <- get(Key("zzz"), ColumnPath(ColumnFamily, "bar"))
+        _ <- setKeyspace(Cf)
+        y <- get(Cf)("xxx", 1234L, Quorum)
+        z <- get(Cf)("zzz", 1234L, Quorum)
     } yield y :: z :: Nil
 
-
-    // perform a side-effect asynchronously
-
-    // this is our side-effect, which is automatically lifted into the Task
+    // an arbitrary side-effect, which is automatically lifted into the `Task`
     // monad through an implicit conversion
-    def showCounterColumn(c: Col): Unit =
-        c match { case CounterColumn(_, v) => println(v) }
+    def show[A](c: CounterColumn[A]): Unit =
+        c match { case CounterColumn(n, v) => println(n + ":" + v) }
 
     val s = for {
-        _ <- setKeyspace(Keyspace)
-        _ <- add(
-               Key("yyy")
-             , ColumnParent(ColumnFamily)
-             , CounterColumn("bar", 1)
-             , All
-             )
-        y <- get(Key("yyy"), ColumnPath(ColumnFamily, "bar"))
-        _ <- showCounterColumn(y)
-        _ <- add(
-               Key("yyy")
-             , ColumnParent(ColumnFamily)
-             , CounterColumn("bar", -1)
-             )
-        z <- get(Key("yyy"), ColumnPath(ColumnFamily, "bar"))
-        _ <- showCounterColumn(z)
+        _ <- setKeyspace(Cf)
+        _ <- add(Cf)("yyy", CounterColumn(1234L, 1), All)
+        y <- get(Cf)("yyy", 1234L, Quorum)
+        _ <- Task.lift(y.map(show))
+        _ <- add(Cf)("yyy", CounterColumn(1234L, -1), Quorum)
+        z <- get(Cf)("yyy", 1234L, Quorum)
+        _ <- Task.lift(z.map(show))
     } yield y :: z :: Nil
 
 
-    val res = runCassandra(conf) { for(a <- r; b <- s) yield a :: b :: Nil }
+    val res = runCassandra(Conf) {
+        for {
+            a <- r
+            b <- s
+        } yield a :: b :: Nil
+    }
+    println("run cassandra monad:")
     println(res.get)
 
     // if your code isn't in monadic style, you can make a `Cassandra` holding
     // the (connection) state and pass it around
-    val cass = newCassandra(conf)
+    val cass = newCassandra(Conf)
+    println("run cassandra monad by passing state:")
     println(cass(r).get)
-    println(cass(s).get)
+    cass(s).get.fold(
+      println
+    , xs => xs.map(x => { println(x); x.map(show) })
+    )
+    cass.finalize()
 }
 
 

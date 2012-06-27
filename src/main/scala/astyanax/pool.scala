@@ -99,6 +99,14 @@ object ResourcePool {
         pool.destroy(r)
     }
 
+    def destroyAll[A](pool: Pool[A]) {
+        pool.localPools.flatMap { local =>
+            val e = local.entries.iterator.toIterable
+            local.entries.removeAll(e)
+            e.map(_ entry)
+        }.foreach(e => try { pool.destroy(e) } catch { case _ => () })
+    }
+
     private[this]
     def reap[A]
       ( destroy:  DestroyResource[A]

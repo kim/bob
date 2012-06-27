@@ -22,7 +22,7 @@ trait IO {
     import org.apache.thrift.transport.{ TNonblockingSocket, TTransport }
 
     import ResourcePool._
-    import Types._
+    import Typeclasses._
 
 
     case class CassandraConfig
@@ -40,11 +40,16 @@ trait IO {
 
     final case class Cassandra(private val s: CassandraState) {
         final def apply[A](m: MonadCassandra[A]): A = runWith(s)(m)
+
+        override def finalize() = releaseCassandraState(s)
     }
 
 
-    def runCassandra[A](conf: CassandraConfig)(m: MonadCassandra[A]): A =
-        runWith(mkCassandraState(conf))(m)
+    def runCassandra[A](conf: CassandraConfig)(m: MonadCassandra[A]): A = {
+        val s = mkCassandraState(conf)
+        try     { runWith(s)(m) }
+        finally { releaseCassandraState(s) }
+    }
 
     def runWith[A](s: CassandraState)(m: MonadCassandra[A]): A =
         m.apply(s)._2
@@ -108,6 +113,12 @@ trait IO {
         )
 
         CassandraState(pool, Executors.newCachedThreadPool)
+    }
+
+    private[this]
+    def releaseCassandraState(s: CassandraState) {
+        s.exec.shutdown()
+        destroyAll(s.pool)
     }
 
     implicit
