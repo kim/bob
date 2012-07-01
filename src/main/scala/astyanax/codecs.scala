@@ -22,14 +22,12 @@ trait Codecs {
         def decode(b: ByteBuffer): String =
             new String(bb2ba(b), b.position, b.remaining, "UTF-8")
 
-        private[this]
-        def bb2ba(bb: ByteBuffer): Array[Byte] =
-            if (bb.hasArray) bb.array
-            else {
-                val ba = new Array[Byte](bb.remaining)
-                bb.get(ba)
-                ba
-            }
+    }
+
+    type ByteString = Array[Byte]
+    object ByteStringCodec extends Codec[ByteString] {
+        def encode(b: ByteString): ByteBuffer = ByteBuffer.wrap(b)
+        def decode(b: ByteBuffer): ByteString = bb2ba(b)
     }
 
     object LongCodec extends Codec[Long] {
@@ -58,6 +56,14 @@ trait Codecs {
             require(b.remaining >= 4)
             b.duplicate.getInt
         }
+    }
+
+
+    private[this]
+    def bb2ba(bb: ByteBuffer): Array[Byte] = {
+        val ba = new Array[Byte](bb.remaining)
+        bb.get(ba)
+        ba
     }
 }
 
