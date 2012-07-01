@@ -42,7 +42,9 @@ trait Typeclasses {
             flatMap(x => task(c => promise(c -> Result(Right(f(x))))))
 
         def flatMap[B](f: A => Task[B]): Task[B] =
-            task(c => apply(c).flatMap(a => f(a).apply(c)))
+            task { c => apply(c).flatMap { r => promise { s => s -> r.flatMap { a =>
+                f(a)(c).eval(s)
+            }}}}
     }
 
     def task[A](f: Client => Promise[A]): Task[A] =
@@ -69,17 +71,9 @@ trait Typeclasses {
     }
 
     // since we're wrapping the async API, when running a `Task`, we'll get back
-    // a promise, which will eventually yield the result. note that is threads
-    // the `Client` as well, so `Promises` can be sequenced in the `Task` monad
-    trait Promise[A] {
-        def get: (Client, Result[A])
-
-        def map[B](f: A => B): Promise[B] =
-            promise(get match { case (c,a) => c -> a.map(f) })
-
-        def flatMap[B](f: A => Promise[B]): Promise[B] =
-            get match { case (c,a) => promise(c -> a.flatMap(x => f(x).get._2)) }
-    }
+    // a promise, which will eventually yield the result. notice that this is
+    // just a state monad, threading the client
+    type Promise[A] = State[Client, Result[A]]
 
     def promise[A](f: (Client, SyncVar[Result[A]]) => Unit)
                   (c: Client)
@@ -90,7 +84,10 @@ trait Typeclasses {
     }
 
     def promise[A](g: => (Client, Result[A])): Promise[A] =
-        new Promise[A] { def get = g }
+        state(s => g)
+
+    final def promise[A](f: Client => (Client, Result[A])): Promise[A] =
+        state(s => f(s))
 
 
     trait State[S, +A] {
