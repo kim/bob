@@ -742,7 +742,8 @@ trait Api {
         import org.apache.thrift.async._
 
 
-        implicit def mkTask[A](f: (Client, SyncVar[Result[A]]) => Unit)
+        implicit
+        def mkTask[A](f: (Client, SyncVar[Result[A]]) => Unit)
         : Task[A] =
             task { c =>
                 val res = new SyncVar[Result[A]]
@@ -750,7 +751,8 @@ trait Api {
                 promise(c -> res.get)
             }
 
-        implicit def callback[A, B](p: SyncVar[Result[B]])
+        implicit
+        def callback[A, B](p: SyncVar[Result[B]])
         : AsyncMethodCallback[A] =
             new AsyncMethodCallback[A] {
                 def onComplete(r: A) {
@@ -835,13 +837,15 @@ trait Api {
 
         // oh my
         import java.util.{ Map => JMap, List => JList }
-        implicit def mutationMapToJava
+        implicit
+        def mutationMapToJava
             ( mm: Map[ByteBuffer,Map[String,Seq[thrift.Mutation]]]
             )
         : JMap[ByteBuffer,JMap[String,JList[thrift.Mutation]]] =
             mm.mapValues(_.mapValues(_.asJava).asJava).asJava
 
-        implicit def AuthReq(username: String, password: String)
+        implicit
+        def AuthReq(username: String, password: String)
         : thrift.AuthenticationRequest =
             new thrift.AuthenticationRequest(Map(username -> password))
     }
