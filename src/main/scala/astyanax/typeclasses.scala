@@ -2,10 +2,11 @@ package astyanax
 
 trait Typeclasses {
 
+    import java.util.concurrent.{ TimeUnit, TimeoutException }
+
     import scala.concurrent.SyncVar
 
-    import org.apache.cassandra.thrift._
-    import org.apache.thrift.transport._
+    import org.apache.cassandra.thrift.Cassandra
 
 
     trait Client {
@@ -50,6 +51,21 @@ trait Typeclasses {
     object Task {
         def lift[A](f: => A): Task[A] =
             task(c => promise(Result(Right(f)) -> c))
+
+        def barrier
+            ( timeout: (Long, TimeUnit)
+            , t1:      Long = System.currentTimeMillis
+            )
+        : Task[Unit] =
+            task { c =>
+                val t2 = System.currentTimeMillis
+                val r  = if (t2 - t1 > timeout._2.toMillis(timeout._1))
+                             Left(new TimeoutException())
+                         else
+                             Right(())
+
+                promise(Result(r) -> c)
+            }
     }
 
     // since we're wrapping the async API, when running a `Task`, we'll get back
