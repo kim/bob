@@ -744,7 +744,11 @@ trait Api {
 
         implicit def mkTask[A](f: (Client, SyncVar[Result[A]]) => Unit)
         : Task[A] =
-            task(promise(f))
+            task { c =>
+                val res = new SyncVar[Result[A]]
+                f(c, res)
+                promise(c -> res.get)
+            }
 
         implicit def callback[A, B](p: SyncVar[Result[B]])
         : AsyncMethodCallback[A] =

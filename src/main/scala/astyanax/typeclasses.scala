@@ -4,8 +4,6 @@ trait Typeclasses {
 
     import java.util.concurrent.{ TimeUnit, TimeoutException }
 
-    import scala.concurrent.SyncVar
-
     import org.apache.cassandra.thrift.Cassandra
 
 
@@ -74,14 +72,6 @@ trait Typeclasses {
     // a promise, which will eventually yield the result. notice that this is
     // just a state monad, threading the client
     type Promise[A] = State[Client, Result[A]]
-
-    def promise[A](f: (Client, SyncVar[Result[A]]) => Unit)
-                  (c: Client)
-    : Promise[A] = {
-        val res = new SyncVar[Result[A]]
-        f(c, res)
-        promise(c -> res.get)
-    }
 
     def promise[A](g: => (Client, Result[A])): Promise[A] =
         state(s => g)
