@@ -39,7 +39,7 @@ trait Typeclasses {
         def apply(c: Client): Promise[A]
 
         def map[B](f: A => B): Task[B] =
-            flatMap(x => task(c => promise(Result(Right(f(x))) -> c)))
+            flatMap(x => task(c => promise(c -> Result(Right(f(x))))))
 
         def flatMap[B](f: A => Task[B]): Task[B] =
             task(c => apply(c).flatMap(a => f(a).apply(c)))
@@ -50,7 +50,7 @@ trait Typeclasses {
 
     object Task {
         def lift[A](f: => A): Task[A] =
-            task(c => promise(Result(Right(f)) -> c))
+            task(c => promise(c -> Result(Right(f))))
 
         def barrier
             ( timeout: (Long, TimeUnit)
@@ -64,7 +64,7 @@ trait Typeclasses {
                          else
                              Right(())
 
-                promise(Result(r) -> c)
+                promise(c -> Result(r))
             }
     }
 
@@ -72,13 +72,13 @@ trait Typeclasses {
     // a promise, which will eventually yield the result. note that is threads
     // the `Client` as well, so `Promises` can be sequenced in the `Task` monad
     trait Promise[A] {
-        def get: (Result[A], Client)
+        def get: (Client, Result[A])
 
         def map[B](f: A => B): Promise[B] =
-            promise(get match { case (a,c) => a.map(f) -> c })
+            promise(get match { case (c,a) => c -> a.map(f) })
 
         def flatMap[B](f: A => Promise[B]): Promise[B] =
-            get match { case (a,c) => promise(a.flatMap(x => f(x).get._1) -> c) }
+            get match { case (c,a) => promise(c -> a.flatMap(x => f(x).get._2)) }
     }
 
     def promise[A](f: (Client, SyncVar[Result[A]]) => Unit)
@@ -86,10 +86,10 @@ trait Typeclasses {
     : Promise[A] = {
         val res = new SyncVar[Result[A]]
         f(c, res)
-        promise(res.get -> c)
+        promise(c -> res.get)
     }
 
-    def promise[A](g: => (Result[A], Client)): Promise[A] =
+    def promise[A](g: => (Client, Result[A])): Promise[A] =
         new Promise[A] { def get = g }
 
 
