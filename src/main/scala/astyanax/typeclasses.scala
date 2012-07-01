@@ -7,6 +7,30 @@ trait Typeclasses {
     import org.apache.cassandra.thrift.Cassandra
 
 
+    trait Functor[F[_]] {
+        def fmap[A, B](r: F[A])(f: A => B): F[B]
+    }
+
+    trait Bind[Z[_]] {
+        def bind[A, B](a: Z[A])(f: A => Z[B]): Z[B]
+    }
+
+    trait MA[M[_], A] {
+        val value: M[A]
+
+        def map[B](f: A => B)(implicit t: Functor[M]): M[B] =
+            t.fmap(value)(f)
+
+        def >>=[B](f: A => M[B])(implicit b: Bind[M]): M[B] =
+            b.bind(value)(f)
+    }
+
+    implicit
+    def ma[M[_], A](a: M[A]): MA[M, A] = new MA[M, A] {
+        val value = a
+    }
+
+
     trait Client {
         val thrift: Cassandra.AsyncClient
         def close()
@@ -30,55 +54,62 @@ trait Typeclasses {
     implicit
     def resultToEither[A](r: Result[A]): Either[Throwable, A] = r.value
 
+    implicit
+    def ResultFunctor: Functor[Result] = new Functor[Result] {
+        def fmap[A, B](r: Result[A])(f: A => B) = r map f
+    }
+
+    implicit
+    def ResultBind: Bind[Result] = new Bind[Result] {
+        def bind[A, B](r: Result[A])(f: A => Result[B]) = r flatMap f
+    }
+
     // a monad of cassandra API calls. can be used to sequence calls, necessary
     // if those need to use the same connection (such as `setKeyspace` followed
     // by `get`). the computation stops on the first error.
-    trait Task[A] {
-        def apply(c: Client): Promise[A]
-
-        def map[B](f: A => B): Task[B] =
-            flatMap(x => task(c => promise(c -> Result(Right(f(x))))))
-
-        def flatMap[B](f: A => Task[B]): Task[B] =
-            task { c => apply(c).flatMap { r => promise { s => s -> r.flatMap { a =>
-                f(a)(c).eval(s)
-            }}}}
-    }
+    type Task[A] = StateT[Promise, Client, A]
 
     def task[A](f: Client => Promise[A]): Task[A] =
-        new Task[A] { def apply(c: Client) = f(c) }
+        stateT(c => promise(f(c)(c)))
 
-    object Task {
-        def lift[A](f: => A): Task[A] =
-            task(c => promise(c -> Result(Right(f))))
+    def task[A](f: => A): Task[A] =
+        task(_ => promise(Result(Right(f))))
 
-        def barrier
-            ( timeout: (Long, TimeUnit)
-            , t1:      Long = System.currentTimeMillis
-            )
-        : Task[Unit] =
-            task { c =>
-                val t2 = System.currentTimeMillis
-                val r  = if (t2 - t1 > timeout._2.toMillis(timeout._1))
-                             Left(new TimeoutException())
-                         else
-                             Right(())
+    def barrier
+        ( timeout: (Long, TimeUnit)
+        , t1:      Long = System.currentTimeMillis
+        )
+    : Task[Unit] =
+        task { c =>
+            val t2 = System.currentTimeMillis
+            val r  = if (t2 - t1 > timeout._2.toMillis(timeout._1))
+                         Left(new TimeoutException())
+                     else
+                         Right(())
 
-                promise(c -> Result(r))
-            }
-    }
+            promise(Result(r))
+        }
 
     // since we're wrapping the async API, when running a `Task`, we'll get back
     // a promise, which will eventually yield the result. notice that this is
     // just a state monad, threading the client
-    type Promise[A] = State[Client, Result[A]]
+    type Promise[A] = StateT[Result, Client, A]
 
-    def promise[A](g: => (Client, Result[A])): Promise[A] =
-        state(s => g)
+    def promise[A](g: => Result[A]): Promise[A] =
+        stateT(s => g map (a => s -> a))
 
-    final def promise[A](f: Client => (Client, Result[A])): Promise[A] =
-        state(s => f(s))
+    implicit
+    def PromiseFunctor: Functor[Promise] = new Functor[Promise] {
+        def fmap[A, B](r: Promise[A])(f: A => B) = r map f
+    }
 
+    implicit
+    def PromiseBind: Bind[Promise] = new Bind[Promise] {
+        def bind[A, B](r: Promise[A])(f: A => Promise[B]) = r flatMap f
+    }
+
+    implicit
+    def PromiseMA[A](p: Promise[A]): MA[Promise, A] = ma[Promise, A](p)
 
     trait State[S, +A] {
         def apply(s: S): (S, A)
@@ -92,9 +123,42 @@ trait Typeclasses {
             state(apply(_) match { case (s,a) => f(a)(s) })
     }
 
-    def state[S, A](f: S => (S, A)): State[S, A] = new State[S, A] {
-        def apply(s: S) = f(s)
+    def state[S, A](f: S => (S, A)): State[S, A] =
+        new State[S, A] { def apply(s: S) = f(s) }
+
+    implicit
+    def StateFunctor[S]: Functor[({type λ[α]=State[S, α]})#λ] =
+        new Functor[({type λ[α]=State[S, α]})#λ] {
+            def fmap[A, B](r: State[S, A])(f: A => B) = r map f
+        }
+
+    implicit
+    def StateBind[S]: Bind[({type λ[α]=State[S, α]})#λ] =
+        new Bind[({type λ[α]=State[S, α]})#λ] {
+            def bind[A, B](r: State[S, A])(f: A => State[S, B]) = r flatMap f
+        }
+
+    implicit
+    def StateMA[S, A](s: State[S, A]): MA[({type λ[α]=State[S, α]})#λ, A] =
+        ma[({type λ[α]=State[S, α]})#λ, A](s)
+
+    trait StateT[M[_], S, A] {
+        def apply(s: S): M[(S, A)]
+
+        def eval(s: S)(implicit m: Functor[M]): M[A] =
+            apply(s) map (_._2)
+
+        def map[B](f: A => B)(implicit m: Functor[M])
+        : StateT[M, S, B] =
+            stateT(s => apply(s) map { case (s1,a) => s1 -> f(a) })
+
+        def flatMap[B](f: A => StateT[M, S, B])(implicit m: Bind[M])
+        : StateT[M, S, B] =
+            stateT(apply(_) >>= (_ match { case (s1,a) => f(a)(s1) }))
     }
+
+    def stateT[M[_], S, A](f: S => M[(S, A)]): StateT[M, S, A] =
+        new StateT[M, S, A] { def apply(s: S) = f(s) }
 }
 
 object Typeclasses extends Typeclasses

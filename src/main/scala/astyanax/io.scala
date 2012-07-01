@@ -61,7 +61,7 @@ trait IO {
     def lift[A](t: Task[A]): MonadCassandra[Future[Result[A]]] = {
         def go[A](t: Task[A])(s: CassandraState): Future[Result[A]] =
             s.exec.submit(withResource(s.pool) { c =>
-                val ret = t(c).eval(c)
+                val ret = t(c).eval(c).map(_._2)
                 if (c.thrift.hasError) throw c.thrift.getError
                 ret
             })
@@ -106,7 +106,7 @@ trait IO {
 
         val pool = createPool[Client](
           newClient
-        , client => client.close()
+        , _.close()
         , conf.hosts.size
         , conf.connIdleTime
         , conf.maxConns

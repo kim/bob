@@ -748,7 +748,7 @@ trait Api {
             task { c =>
                 val res = new SyncVar[Result[A]]
                 f(c, res)
-                promise(c -> res.get)
+                promise(res.get)
             }
 
         implicit

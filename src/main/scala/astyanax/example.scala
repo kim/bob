@@ -24,8 +24,7 @@ object Example extends App {
         z <- get(Cf)("zzz", 1234L, Quorum)
     } yield y :: z :: Nil
 
-    // an arbitrary side-effect, which is automatically lifted into the `Task`
-    // monad through an implicit conversion
+    // an arbitrary side-effect
     def show[A](c: CounterColumn[A]): Unit =
         c match { case CounterColumn(n, v) => println(n + ":" + v) }
 
@@ -33,10 +32,10 @@ object Example extends App {
         _ <- setKeyspace(Cf)
         _ <- add(Cf)("yyy", CounterColumn(1234L, 1), All)
         y <- get(Cf)("yyy", 1234L, Quorum)
-        _ <- Task.lift(y.map(show))
+        _ <- task(y.map(show))
         _ <- add(Cf)("yyy", CounterColumn(1234L, -1), Quorum)
         z <- get(Cf)("yyy", 1234L, Quorum)
-        _ <- Task.lift(z.map(show))
+        _ <- task(z.map(show))
     } yield y :: z :: Nil
 
 
