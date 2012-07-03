@@ -64,35 +64,16 @@ trait IO {
         Cassandra(mk(conf))
 
     implicit
-    def lift[A, C](t: Task[Client[C], A])
-    : MonadCassandra[Future[Result[A]], C] = {
-
-        def go[A](t: Task[Client[C], A])(s: CassandraState[C])
-        : Future[Result[A]] =
-            s.exec.submit(callable(
-              withResource(s.pool) { c => t(c).eval(c).map(_._2) }
-            ))
-
-        state(s => s -> {
-            try   { go(t)(s) }
-            catch { case e => future(Result[A](Left(e))) }
-        })
-    }
-
-    private[this]
-    def future[A](r: => Result[A]): Future[Result[A]] =
-        new Future[Result[A]] {
-            def get() = r
-            def get(timout: Long, unit: TimeUnit) = get
-            def cancel(mayInterrupt: Boolean) = false
-            def isCancelled() = false
-            def isDone() = true
-        }
+    def lift[A, C](t: Task[Client[C], A]): MonadCassandra[Future[Result[A]], C] =
+        state(s => s -> s.exec.submit(callable(
+            try   { withResource(s.pool) { c => t(c).eval(c).map(_._2) }}
+            catch { case e => Result[A](Left(e)) }
+        )))
 
     implicit
     def mkCassandraState(conf: CassandraConfig)
     : CassandraState[Thrift.AsyncClient] = {
-        val mgr = new TAsyncClientManager
+        val mgr = new TAsyncClientManager // TODO: support multiple selector threads
         val addrs = Stream.continually(conf.hosts).flatten.iterator
         val newClient = (_:Unit) => {
             val (h, p) = addrs.next
@@ -117,7 +98,7 @@ trait IO {
     }
 
     private[this]
-    def callable[A](f: A): Callable[A] = new Callable[A] { def call = f }
+    def callable[A](f: => A): Callable[A] = new Callable[A] { def call = f }
 }
 
 object IO extends IO
