@@ -8,11 +8,12 @@ trait Api {
 
     import org.apache.cassandra.thrift
 
+    import Clients._
     import Typeclasses._
     import Types._
 
 
-    def setKeyspace(cf: CF): Task[Unit] =
+    def setKeyspace(cf: CF): Task[ThriftClient, Unit] =
         Thrift.setKeyspace(cf.ks)
 
     def get[K, N, V]
@@ -22,7 +23,7 @@ trait Api {
         , path: N
         , cl:   ConsistencyLevel
         )
-    : Task[Option[Column[N, V]]] = {
+    : Task[ThriftClient, Option[Column[N, V]]] = {
         val ColumnFamily(_, name, keyCodec, nameCodec, valCodec) = cf
         Thrift.get(
           Key.convert(Key(key))(keyCodec)
@@ -38,7 +39,7 @@ trait Api {
         , path: N
         , cl:   ConsistencyLevel
         )
-    : Task[Option[SuperColumn[N, NN, VV]]] = {
+    : Task[ThriftClient, Option[SuperColumn[N, NN, VV]]] = {
         val SuperColumnFamily(_, name, keyCodec, nameCodec, colNameCodec, colValCodec) = cf
         Thrift.get(
           Key.convert(Key(key))(keyCodec)
@@ -54,7 +55,7 @@ trait Api {
         , path: N
         , cl:   ConsistencyLevel
         )
-    : Task[Option[CounterColumn[N]]] = {
+    : Task[ThriftClient, Option[CounterColumn[N]]] = {
         val CounterColumnFamily(_, name, keyCodec, nameCodec) = cf
         Thrift.get(
           Key.convert(Key(key))(keyCodec)
@@ -70,7 +71,7 @@ trait Api {
         , path: N
         , cl:   ConsistencyLevel
         )
-    : Task[Option[CounterSuperColumn[N, NN]]] = {
+    : Task[ThriftClient, Option[CounterSuperColumn[N, NN]]] = {
         val SuperCounterColumnFamily(_, name, keyCodec, nameCodec, colNameCodec) = cf
         Thrift.get(
           Key.convert(Key(key))(keyCodec)
@@ -86,7 +87,7 @@ trait Api {
         , col: CounterColumn[N]
         , cl:  ConsistencyLevel
         )
-    : Task[Unit] = {
+    : Task[ThriftClient, Unit] = {
         val CounterColumnFamily(_, name, keyCodec, nameCodec) = cf
         Thrift.add(
           Key.convert(Key(key))(keyCodec)
@@ -104,7 +105,7 @@ trait Api {
         , col:  CounterColumn[NN]
         , cl:   ConsistencyLevel
         )
-    : Task[Unit] = {
+    : Task[ThriftClient, Unit] = {
         val SuperCounterColumnFamily(_, name, keyCodec, nameCodec, colNameCodec) = cf
         Thrift.add(
           Key.convert(Key(key))(keyCodec)
@@ -121,7 +122,7 @@ trait Api {
         , col: Column[N, V]
         , cl:  ConsistencyLevel
         )
-    : Task[Unit] = {
+    : Task[ThriftClient, Unit] = {
         val ColumnFamily(_, name, keyCodec, nameCodec, valCodec) = cf
         Thrift.insert(
           Key.convert(Key(key))(keyCodec)
@@ -139,7 +140,7 @@ trait Api {
         , col:  Column[NN, VV]
         , cl:   ConsistencyLevel
         )
-    : Task[Unit] = {
+    : Task[ThriftClient, Unit] = {
         val SuperColumnFamily(_, name, keyCodec, nameCodec, colNameCodec, colValCodec) = cf
         Thrift.insert(
           Key.convert(Key(key))(keyCodec)
@@ -156,7 +157,7 @@ trait Api {
         , path: Option[N] // None to remove row
         , cl:   ConsistencyLevel
         )
-    : Task[Unit] = {
+    : Task[ThriftClient, Unit] = {
         val ColumnFamily(_, name, keyCodec, nameCodec, valCodec) = cf
         Thrift.remove(
           Key.convert(Key(key))(keyCodec)
@@ -173,7 +174,7 @@ trait Api {
         , path: Option[N] // None to remove row
         , cl:   ConsistencyLevel
         )
-    : Task[Unit] = {
+    : Task[ThriftClient, Unit] = {
         val SuperColumnFamily(_, name, keyCodec, nameCodec, colNameCodec, _) = cf
         Thrift.remove(
           Key.convert(Key(key))(keyCodec)
@@ -190,7 +191,7 @@ trait Api {
         , path: Option[N] // None to remove row
         , cl:   ConsistencyLevel
         )
-    : Task[Unit] = {
+    : Task[ThriftClient, Unit] = {
         val CounterColumnFamily(_, name, keyCodec, nameCodec) = cf
         Thrift.removeCounter(
           Key.convert(Key(key))(keyCodec)
@@ -206,7 +207,7 @@ trait Api {
         , path: Option[N] // None to remove row
         , cl:   ConsistencyLevel
         )
-    : Task[Unit] = {
+    : Task[ThriftClient, Unit] = {
         val SuperCounterColumnFamily(_, name, keyCodec, nameCodec, colNameCodec) = cf
         Thrift.removeCounter(
           Key.convert(Key(key))(keyCodec)
@@ -222,7 +223,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Seq[Column[N, V]]] = {
+    : Task[ThriftClient, Seq[Column[N, V]]] = {
         val ColumnFamily(_, name, keyCodec, nameCodec, valCodec) = cf
         Thrift.getSlice(
           Key.convert(Key(key))(keyCodec)
@@ -238,7 +239,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Seq[SuperColumn[N, NN, VV]]] = {
+    : Task[ThriftClient, Seq[SuperColumn[N, NN, VV]]] = {
         val SuperColumnFamily(_, name, keyCodec, nameCodec, colNameCodec, colValCodec) = cf
         Thrift.getSlice(
           Key.convert(Key(key))(keyCodec)
@@ -254,7 +255,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Seq[CounterColumn[N]]] = {
+    : Task[ThriftClient, Seq[CounterColumn[N]]] = {
         val CounterColumnFamily(_, name, keyCodec, nameCodec) = cf
         Thrift.getSlice(
           Key.convert(Key(key))(keyCodec)
@@ -270,7 +271,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Seq[CounterSuperColumn[N, NN]]] = {
+    : Task[ThriftClient, Seq[CounterSuperColumn[N, NN]]] = {
         val SuperCounterColumnFamily(_, name, keyCodec, nameCodec, colNameCodec) = cf
         Thrift.getSlice(
           Key.convert(Key(key))(keyCodec)
@@ -286,7 +287,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Int] = {
+    : Task[ThriftClient, Int] = {
         val ColumnFamily(_, name, keyCodec, nameCodec, valCodec) = cf
         Thrift.getCount(
           Key.convert(Key(key))(keyCodec)
@@ -303,7 +304,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Int] = {
+    : Task[ThriftClient, Int] = {
         val SuperColumnFamily(_, name, keyCodec, nameCodec, _, _) = cf
         Thrift.getCount(
           Key.convert(Key(key))(keyCodec)
@@ -320,7 +321,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Int] = {
+    : Task[ThriftClient, Int] = {
         val CounterColumnFamily(_, name, keyCodec, nameCodec) = cf
         Thrift.getCount(
           Key.convert(Key(key))(keyCodec)
@@ -337,7 +338,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Int] = {
+    : Task[ThriftClient, Int] = {
         val SuperCounterColumnFamily(_, name, keyCodec, nameCodec, _) = cf
         Thrift.getCount(
           Key.convert(Key(key))(keyCodec)
@@ -354,7 +355,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Map[K, Seq[Column[N, V]]]] = {
+    : Task[ThriftClient, Map[K, Seq[Column[N, V]]]] = {
         val ColumnFamily(_, name, keyCodec, nameCodec, valCodec) = cf
         Thrift.multigetSlice(
           keys.map(key => Key.convert(Key(key))(keyCodec))
@@ -376,7 +377,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Map[K, Seq[SuperColumn[N, NN, VV]]]] = {
+    : Task[ThriftClient, Map[K, Seq[SuperColumn[N, NN, VV]]]] = {
         val SuperColumnFamily(_, name, keyCodec, nameCodec, colNameCodec, colValCodec) = cf
         Thrift.multigetSlice(
           keys.map(key => Key.convert(Key(key))(keyCodec))
@@ -403,7 +404,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Map[K, Seq[CounterColumn[N]]]] = {
+    : Task[ThriftClient, Map[K, Seq[CounterColumn[N]]]] = {
         val CounterColumnFamily(_, name, keyCodec, nameCodec) = cf
         Thrift.multigetSlice(
           keys.map(key => Key.convert(Key(key))(keyCodec))
@@ -425,7 +426,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Map[K, Seq[CounterSuperColumn[N, NN]]]] = {
+    : Task[ThriftClient, Map[K, Seq[CounterSuperColumn[N, NN]]]] = {
         val SuperCounterColumnFamily(_, name, keyCodec, nameCodec, colNameCodec) = cf
         Thrift.multigetSlice(
           keys.map(key => Key.convert(Key(key))(keyCodec))
@@ -451,7 +452,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Map[K, Int]] = {
+    : Task[ThriftClient, Map[K, Int]] = {
         val ColumnFamily(_, name, keyCodec, nameCodec, _) = cf
         Thrift.multigetCount(
           keys.map(key => Key.convert(Key(key))(keyCodec))
@@ -470,7 +471,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Map[K, Int]] = {
+    : Task[ThriftClient, Map[K, Int]] = {
         val SuperColumnFamily(_, name, keyCodec, nameCodec, _, _) = cf
         Thrift.multigetCount(
           keys.map(key => Key.convert(Key(key))(keyCodec))
@@ -489,7 +490,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Map[K, Int]] = {
+    : Task[ThriftClient, Map[K, Int]] = {
         val CounterColumnFamily(_, name, keyCodec, nameCodec) = cf
         Thrift.multigetCount(
           keys.map(key => Key.convert(Key(key))(keyCodec))
@@ -508,7 +509,7 @@ trait Api {
         , pred: SlicePredicate[N]
         , cl:   ConsistencyLevel
         )
-    : Task[Map[K, Int]] = {
+    : Task[ThriftClient, Map[K, Int]] = {
         val SuperCounterColumnFamily(_, name, keyCodec, nameCodec, _) = cf
         Thrift.multigetCount(
           keys.map(key => Key.convert(Key(key))(keyCodec))
@@ -520,7 +521,8 @@ trait Api {
         }.toMap)
     }
 
-    def batchMutate(bm: BatchMutation, cl: ConsistencyLevel): Task[Unit] =
+    def batchMutate(bm: BatchMutation, cl: ConsistencyLevel)
+    : Task[ThriftClient, Unit] =
         Thrift.batchMutate(BatchMutation.freeze(bm), cl)
 
 
@@ -536,19 +538,20 @@ trait Api {
         import Internal._
 
 
-        def login(username: String, password: String): Task[Unit] =
-            mkTask(_.thrift.login(AuthReq(username, password), _))
+        def login(username: String, password: String)
+        : Task[ThriftClient, Unit] =
+            mkTask(_.login(AuthReq(username, password), _))
 
-        def setKeyspace(name: String): Task[Unit] =
-            mkTask(_.thrift.set_keyspace(name, _))
+        def setKeyspace(name: String): Task[ThriftClient, Unit] =
+            mkTask(_.set_keyspace(name, _))
 
         def get
             ( key: ByteBuffer
             , cp:  thrift.ColumnPath
             , cl:  thrift.ConsistencyLevel = thrift.ConsistencyLevel.ONE
             )
-        : Task[thrift.ColumnOrSuperColumn] =
-            mkTask(_.thrift.get(key, cp, cl, _))
+        : Task[ThriftClient, thrift.ColumnOrSuperColumn] =
+            mkTask(_.get(key, cp, cl, _))
 
         def getSlice
             ( key: ByteBuffer
@@ -556,8 +559,8 @@ trait Api {
             , sp:  thrift.SlicePredicate
             , cl:  thrift.ConsistencyLevel = thrift.ConsistencyLevel.ONE
             )
-        : Task[Seq[thrift.ColumnOrSuperColumn]] =
-            mkTask(_.thrift.get_slice(key, cp, sp, cl, _))
+        : Task[ThriftClient, Seq[thrift.ColumnOrSuperColumn]] =
+            mkTask(_.get_slice(key, cp, sp, cl, _))
 
         def getCount
             ( key: ByteBuffer
@@ -565,8 +568,8 @@ trait Api {
             , sp:  thrift.SlicePredicate
             , cl:  thrift.ConsistencyLevel = thrift.ConsistencyLevel.ONE
             )
-        : Task[Int] =
-            mkTask(_.thrift.get_count(key, cp, sp, cl, _))
+        : Task[ThriftClient, Int] =
+            mkTask(_.get_count(key, cp, sp, cl, _))
 
         def multigetSlice
             ( keys: Seq[ByteBuffer]
@@ -574,8 +577,8 @@ trait Api {
             , sp:   thrift.SlicePredicate
             , cl:   thrift.ConsistencyLevel = thrift.ConsistencyLevel.ONE
             )
-        : Task[Map[ByteBuffer,Seq[thrift.ColumnOrSuperColumn]]] =
-            mkTask(_.thrift.multiget_slice(keys, cp, sp, cl, _))
+        : Task[ThriftClient, Map[ByteBuffer,Seq[thrift.ColumnOrSuperColumn]]] =
+            mkTask(_.multiget_slice(keys, cp, sp, cl, _))
 
         def multigetCount
             ( keys: Seq[ByteBuffer]
@@ -583,8 +586,8 @@ trait Api {
             , sp:   thrift.SlicePredicate
             , cl:   thrift.ConsistencyLevel = thrift.ConsistencyLevel.ONE
             )
-        : Task[Map[ByteBuffer,Int]] =
-            mkTask(_.thrift.multiget_count(keys, cp, sp, cl, _))
+        : Task[ThriftClient, Map[ByteBuffer,Int]] =
+            mkTask(_.multiget_count(keys, cp, sp, cl, _))
 
         def getRangeSlices
             ( cp: thrift.ColumnParent
@@ -592,8 +595,8 @@ trait Api {
             , kr: thrift.KeyRange
             , cl: thrift.ConsistencyLevel = thrift.ConsistencyLevel.ONE
             )
-        : Task[Seq[thrift.KeySlice]] =
-            mkTask(_.thrift.get_range_slices(cp, sp, kr, cl, _))
+        : Task[ThriftClient, Seq[thrift.KeySlice]] =
+            mkTask(_.get_range_slices(cp, sp, kr, cl, _))
 
         def getPagedSlice
             ( cf:       String
@@ -601,8 +604,8 @@ trait Api {
             , startCol: ByteBuffer
             , cl:       thrift.ConsistencyLevel = thrift.ConsistencyLevel.ONE
             )
-        : Task[Seq[thrift.KeySlice]] =
-            mkTask(_.thrift.get_paged_slice(cf, kr, startCol, cl, _))
+        : Task[ThriftClient, Seq[thrift.KeySlice]] =
+            mkTask(_.get_paged_slice(cf, kr, startCol, cl, _))
 
         def insert
             ( key: ByteBuffer
@@ -610,8 +613,8 @@ trait Api {
             , col: thrift.Column
             , cl:  thrift.ConsistencyLevel = thrift.ConsistencyLevel.ONE
             )
-        : Task[Unit] =
-            mkTask(_.thrift.insert(key, cp, col, cl, _))
+        : Task[ThriftClient, Unit] =
+            mkTask(_.insert(key, cp, col, cl, _))
 
         def add
             ( key: ByteBuffer
@@ -619,8 +622,8 @@ trait Api {
             , col: thrift.CounterColumn
             , cl:  thrift.ConsistencyLevel = thrift.ConsistencyLevel.ONE
             )
-        : Task[Unit] =
-            mkTask(_.thrift.add(key, cp, col, cl, _))
+        : Task[ThriftClient, Unit] =
+            mkTask(_.add(key, cp, col, cl, _))
 
         def remove
             ( key: ByteBuffer
@@ -628,53 +631,56 @@ trait Api {
             , ts:  Long
             , cl:  thrift.ConsistencyLevel = thrift.ConsistencyLevel.ONE
             )
-        : Task[Unit] =
-            mkTask(_.thrift.remove(key, cp, ts, cl, _))
+        : Task[ThriftClient, Unit] =
+            mkTask(_.remove(key, cp, ts, cl, _))
 
         def removeCounter
             ( key: ByteBuffer
             , cp:  thrift.ColumnPath
             , cl:  thrift.ConsistencyLevel = thrift.ConsistencyLevel.ONE
             )
-        : Task[Unit] =
-            mkTask(_.thrift.remove_counter(key, cp, cl, _))
+        : Task[ThriftClient, Unit] =
+            mkTask(_.remove_counter(key, cp, cl, _))
 
         def batchMutate
             ( mutations: Map[ByteBuffer,Map[String,Seq[thrift.Mutation]]]
             , cl:        thrift.ConsistencyLevel = thrift.ConsistencyLevel.ONE
             )
-        : Task[Unit] =
-            mkTask(_.thrift.batch_mutate(mutationMapToJava(mutations), cl, _))
+        : Task[ThriftClient, Unit] =
+            mkTask(_.batch_mutate(mutationMapToJava(mutations), cl, _))
 
-        def truncate(cf: String): Task[Unit] =
-            mkTask(_.thrift.truncate(cf, _))
+        def truncate(cf: String): Task[ThriftClient, Unit] =
+            mkTask(_.truncate(cf, _))
 
 
         // "Meta-APIs"
 
-        def describeSchemaVersions(): Task[Map[String,Seq[String]]] =
-            mkTask(_.thrift.describe_schema_versions(_))
+        def describeSchemaVersions()
+        : Task[ThriftClient, Map[String,Seq[String]]] =
+            mkTask(_.describe_schema_versions(_))
 
-        def describeKeyspaces(): Task[Seq[thrift.KsDef]] =
-            mkTask(_.thrift.describe_keyspaces(_))
+        def describeKeyspaces(): Task[ThriftClient, Seq[thrift.KsDef]] =
+            mkTask(_.describe_keyspaces(_))
 
-        def describeClusterName(): Task[String] =
-            mkTask(_.thrift.describe_cluster_name(_))
+        def describeClusterName(): Task[ThriftClient, String] =
+            mkTask(_.describe_cluster_name(_))
 
-        def describeVersion(): Task[String] =
-            mkTask(_.thrift.describe_version(_))
+        def describeVersion(): Task[ThriftClient, String] =
+            mkTask(_.describe_version(_))
 
-        def describeRing(keyspace: String): Task[Seq[thrift.TokenRange]] =
-            mkTask(_.thrift.describe_ring(keyspace, _))
+        def describeRing(keyspace: String)
+        : Task[ThriftClient, Seq[thrift.TokenRange]] =
+            mkTask(_.describe_ring(keyspace, _))
 
-        def describePartitioner(): Task[String] =
-            mkTask(_.thrift.describe_partitioner(_))
+        def describePartitioner(): Task[ThriftClient, String] =
+            mkTask(_.describe_partitioner(_))
 
-        def describeSnitch(): Task[String] =
-            mkTask(_.thrift.describe_snitch(_))
+        def describeSnitch(): Task[ThriftClient, String] =
+            mkTask(_.describe_snitch(_))
 
-        def describeKeyspace(keyspace: String): Task[thrift.KsDef] =
-            mkTask(_.thrift.describe_keyspace(keyspace, _))
+        def describeKeyspace(keyspace: String)
+        : Task[ThriftClient, thrift.KsDef] =
+            mkTask(_.describe_keyspace(keyspace, _))
 
         // experimental  API for hadoop/parallel query support
         def describeSplits
@@ -683,48 +689,54 @@ trait Api {
             , endToken:     String
             , keysPerSplit: Int
             )
-        : Task[List[String]] =
-            mkTask(_.thrift.describe_splits(cf, startToken, endToken, keysPerSplit, _))
+        : Task[ThriftClient, List[String]] =
+            mkTask(_.describe_splits(cf, startToken, endToken, keysPerSplit, _))
 
         // "system" operations
 
         type SchemaId = String
 
-        def systemAddColumnFamily(cfdef: thrift.CfDef): Task[SchemaId] =
-            mkTask(_.thrift.system_add_column_family(cfdef, _))
+        def systemAddColumnFamily(cfdef: thrift.CfDef)
+        : Task[ThriftClient, SchemaId] =
+            mkTask(_.system_add_column_family(cfdef, _))
 
-        def systemDropColumnFamily(cf: String): Task[SchemaId] =
-            mkTask(_.thrift.system_drop_column_family(cf, _))
+        def systemDropColumnFamily(cf: String)
+        : Task[ThriftClient, SchemaId] =
+            mkTask(_.system_drop_column_family(cf, _))
 
-        def systemAddKeyspace(ksdef: thrift.KsDef): Task[SchemaId] =
-            mkTask(_.thrift.system_add_keyspace(ksdef, _))
+        def systemAddKeyspace(ksdef: thrift.KsDef)
+        : Task[ThriftClient, SchemaId] =
+            mkTask(_.system_add_keyspace(ksdef, _))
 
-        def systemDropKeyspace(ks: String): Task[SchemaId] =
-            mkTask(_.thrift.system_drop_keyspace(ks, _))
+        def systemDropKeyspace(ks: String)
+        : Task[ThriftClient, SchemaId] =
+            mkTask(_.system_drop_keyspace(ks, _))
 
-        def systemUpdateKeyspace(ksdef: thrift.KsDef): Task[SchemaId] =
-            mkTask(_.thrift.system_update_keyspace(ksdef, _))
+        def systemUpdateKeyspace(ksdef: thrift.KsDef)
+        : Task[ThriftClient, SchemaId] =
+            mkTask(_.system_update_keyspace(ksdef, _))
 
-        def systemUpdateColumnFamily(cfdef: thrift.CfDef): Task[SchemaId] =
-            mkTask(_.thrift.system_update_column_family(cfdef, _))
+        def systemUpdateColumnFamily(cfdef: thrift.CfDef)
+        : Task[ThriftClient, SchemaId] =
+            mkTask(_.system_update_column_family(cfdef, _))
 
 
         // CQL
 
         def executeCqlQuery(query: ByteBuffer, comp: thrift.Compression)
-        : Task[thrift.CqlResult] =
-            mkTask(_.thrift.execute_cql_query(query, comp, _))
+        : Task[ThriftClient, thrift.CqlResult] =
+            mkTask(_.execute_cql_query(query, comp, _))
 
         def prepareCqlQuery(query: ByteBuffer, comp: thrift.Compression)
-        : Task[thrift.CqlPreparedResult] =
-            mkTask(_.thrift.prepare_cql_query(query, comp, _))
+        : Task[ThriftClient, thrift.CqlPreparedResult] =
+            mkTask(_.prepare_cql_query(query, comp, _))
 
         def executePreparedCqlQuery(id: Int, values: Seq[ByteBuffer])
-        : Task[thrift.CqlResult] =
-            mkTask(_.thrift.execute_prepared_cql_query(id, values, _))
+        : Task[ThriftClient, thrift.CqlResult] =
+            mkTask(_.execute_prepared_cql_query(id, values, _))
 
-        def setCqlVersion(v: String): Task[Unit] =
-            mkTask(_.thrift.set_cql_version(v, _))
+        def setCqlVersion(v: String): Task[ThriftClient, Unit] =
+            mkTask(_.set_cql_version(v, _))
     }
 
 
@@ -737,17 +749,16 @@ trait Api {
         import scala.collection.JavaConversions._
         import scala.collection.JavaConverters._
 
-        import org.apache.cassandra.thrift
-        import org.apache.cassandra.thrift.Cassandra.AsyncClient._
+        import org.apache.cassandra.thrift.Cassandra
         import org.apache.thrift.async._
 
 
         implicit
-        def mkTask[A](f: (Client, SyncVar[Result[A]]) => Unit)
-        : Task[A] =
+        def mkTask[A](f: (Cassandra.AsyncClient, SyncVar[Result[A]]) => Unit)
+        : Task[ThriftClient, A] =
             task { c =>
                 val res = new SyncVar[Result[A]]
-                f(c, res)
+                c.runWith(f(_, res))
                 promise(res.get)
             }
 
@@ -761,71 +772,71 @@ trait Api {
                       // interface of `TAsyncMethodCall`, but not declared in
                       // the base class, so generated methods (which exist even
                       // for `void` results) don't inherit
-                      case x: login_call =>
+                      case x: Cassandra.AsyncClient.login_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: get_call =>
+                      case x: Cassandra.AsyncClient.get_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: set_keyspace_call =>
+                      case x: Cassandra.AsyncClient.set_keyspace_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: get_slice_call =>
+                      case x: Cassandra.AsyncClient.get_slice_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: get_count_call =>
+                      case x: Cassandra.AsyncClient.get_count_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: multiget_slice_call =>
+                      case x: Cassandra.AsyncClient.multiget_slice_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: multiget_count_call =>
+                      case x: Cassandra.AsyncClient.multiget_count_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: get_range_slices_call =>
+                      case x: Cassandra.AsyncClient.get_range_slices_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: get_paged_slice_call =>
+                      case x: Cassandra.AsyncClient.get_paged_slice_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: insert_call =>
+                      case x: Cassandra.AsyncClient.insert_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: add_call =>
+                      case x: Cassandra.AsyncClient.add_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: remove_call =>
+                      case x: Cassandra.AsyncClient.remove_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: remove_counter_call =>
+                      case x: Cassandra.AsyncClient.remove_counter_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: batch_mutate_call =>
+                      case x: Cassandra.AsyncClient.batch_mutate_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: truncate_call =>
+                      case x: Cassandra.AsyncClient.truncate_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: describe_schema_versions_call =>
+                      case x: Cassandra.AsyncClient.describe_schema_versions_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: describe_keyspaces_call =>
+                      case x: Cassandra.AsyncClient.describe_keyspaces_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: describe_cluster_name_call =>
+                      case x: Cassandra.AsyncClient.describe_cluster_name_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: describe_version_call =>
+                      case x: Cassandra.AsyncClient.describe_version_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: describe_partitioner_call =>
+                      case x: Cassandra.AsyncClient.describe_partitioner_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: describe_snitch_call =>
+                      case x: Cassandra.AsyncClient.describe_snitch_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: describe_keyspace_call =>
+                      case x: Cassandra.AsyncClient.describe_keyspace_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: describe_splits_call =>
+                      case x: Cassandra.AsyncClient.describe_splits_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: system_add_column_family_call =>
+                      case x: Cassandra.AsyncClient.system_add_column_family_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: system_drop_column_family_call =>
+                      case x: Cassandra.AsyncClient.system_drop_column_family_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: system_add_keyspace_call =>
+                      case x: Cassandra.AsyncClient.system_add_keyspace_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: system_drop_keyspace_call =>
+                      case x: Cassandra.AsyncClient.system_drop_keyspace_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: system_update_keyspace_call =>
+                      case x: Cassandra.AsyncClient.system_update_keyspace_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: system_update_column_family_call =>
+                      case x: Cassandra.AsyncClient.system_update_column_family_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: execute_cql_query_call =>
+                      case x: Cassandra.AsyncClient.execute_cql_query_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: prepare_cql_query_call =>
+                      case x: Cassandra.AsyncClient.prepare_cql_query_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: execute_prepared_cql_query_call =>
+                      case x: Cassandra.AsyncClient.execute_prepared_cql_query_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x: set_cql_version_call =>
+                      case x: Cassandra.AsyncClient.set_cql_version_call =>
                           p put Right(x.getResult.asInstanceOf[B])
                       case x => sys.error("wtf?")
                   }}

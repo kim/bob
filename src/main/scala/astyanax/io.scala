@@ -21,6 +21,7 @@ trait IO {
                                       }
     import org.apache.thrift.transport.{ TNonblockingSocket, TTransport }
 
+    import Clients._
     import ResourcePool._
     import Typeclasses._
 
@@ -31,40 +32,46 @@ trait IO {
         , connIdleTime: (Long, TimeUnit)   = 500L -> TimeUnit.MILLISECONDS
         )
 
-    case class CassandraState
-        ( pool: Pool[Client]
+    case class CassandraState[C]
+        ( pool: Pool[Client[C]]
         , exec: ExecutorService
         )
+    type MkCassandraState[C] = CassandraConfig => CassandraState[C]
 
-    type MonadCassandra[A] = State[CassandraState, A]
+    type MonadCassandra[A, C] = State[CassandraState[C], A]
 
-    final case class Cassandra(private val s: CassandraState) {
-        final def apply[A](m: MonadCassandra[A]): A = runWith(s)(m)
+    final case class Cassandra[C](private val s: CassandraState[C]) {
+        final def apply[A](m: MonadCassandra[A, C]): A = runWith(s)(m)
 
         override def finalize() = releaseCassandraState(s)
     }
 
 
-    def runCassandra[A](conf: CassandraConfig)(m: MonadCassandra[A]): A = {
-        val s = mkCassandraState(conf)
+    def runCassandra[A, C]
+        (conf: CassandraConfig)(m: MonadCassandra[A, C])
+        (implicit mk: MkCassandraState[C])
+    : A = {
+        val s = mk(conf)
         try     { runWith(s)(m) }
         finally { releaseCassandraState(s) }
     }
 
-    def runWith[A](s: CassandraState)(m: MonadCassandra[A]): A =
+    def runWith[A, C](s: CassandraState[C])(m: MonadCassandra[A, C]): A =
         m.apply(s)._2
 
-    def newCassandra(conf: CassandraConfig): Cassandra =
-        Cassandra(mkCassandraState(conf))
+    def newCassandra[C](conf: CassandraConfig)(implicit mk: MkCassandraState[C])
+    : Cassandra[C] =
+        Cassandra(mk(conf))
 
     implicit
-    def lift[A](t: Task[A]): MonadCassandra[Future[Result[A]]] = {
-        def go[A](t: Task[A])(s: CassandraState): Future[Result[A]] =
-            s.exec.submit(withResource(s.pool) { c =>
-                val ret = t(c).eval(c).map(_._2)
-                if (c.thrift.hasError) throw c.thrift.getError
-                ret
-            })
+    def lift[A, C](t: Task[Client[C], A])
+    : MonadCassandra[Future[Result[A]], C] = {
+
+        def go[A](t: Task[Client[C], A])(s: CassandraState[C])
+        : Future[Result[A]] =
+            s.exec.submit(callable(
+              withResource(s.pool) { c => t(c).eval(c).map(_._2) }
+            ))
 
         state(s => s -> {
             try   { go(t)(s) }
@@ -82,29 +89,17 @@ trait IO {
             def isDone() = true
         }
 
-    private[this]
-    def mkClient(host: String, port: Int, mgr: TAsyncClientManager): Client =
-        new Client {
-            lazy val thrift = new Thrift.AsyncClient(factory, mgr, sock)
-            def close() { sock.close() }
-
-            private[this] lazy val sock    = new TNonblockingSocket(host, port)
-            private[this] lazy val factory = new TProtocolFactory {
-                def getProtocol(transport: TTransport): TProtocol =
-                    new TBinaryProtocol(transport)
-            }
-        }
-
-    private[this]
-    def mkCassandraState(conf: CassandraConfig): CassandraState = {
+    implicit
+    def mkCassandraState(conf: CassandraConfig)
+    : CassandraState[Thrift.AsyncClient] = {
         val mgr = new TAsyncClientManager
         val addrs = Stream.continually(conf.hosts).flatten.iterator
         val newClient = (_:Unit) => {
             val (h, p) = addrs.next
-            mkClient(h, p, mgr)
+            ThriftClient(h, p, mgr)
         }
 
-        val pool = createPool[Client](
+        val pool = createPool[Client[Thrift.AsyncClient]](
           newClient
         , _.close()
         , conf.hosts.size
@@ -116,13 +111,13 @@ trait IO {
     }
 
     private[this]
-    def releaseCassandraState(s: CassandraState) {
+    def releaseCassandraState(s: CassandraState[_]) {
         s.exec.shutdown()
         destroyAll(s.pool)
     }
 
-    implicit
-    def fnToCallable[A](f: => A): Callable[A] = new Callable[A] { def call = f }
+    private[this]
+    def callable[A](f: A): Callable[A] = new Callable[A] { def call = f }
 }
 
 object IO extends IO

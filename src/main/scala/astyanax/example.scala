@@ -54,7 +54,7 @@ object Example extends App {
     println("run cassandra monad by passing state:")
     println(cass(r).get)
     cass(s).get.fold(
-      println
+      e  => println("ERROR: " + e)
     , xs => xs.map(x => { println(x); x.map(show) })
     )
     cass.finalize()
