@@ -4,11 +4,8 @@ object Example extends App {
 
     import org.apache.cassandra.thrift.{ Cassandra => Thrift }
 
-    import Api._
-    import Codecs._
-    import Types._
-    import Typeclasses._
-    import IO._
+    import Astyanax._
+
 
     val Conf = CassandraConfig[Thrift.AsyncClient](Seq("localhost" -> 9160))
     val Cf   = CounterColumnFamily[String, Long](

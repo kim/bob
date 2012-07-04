@@ -3,14 +3,10 @@ package astyanax
 trait Api {
 
     import java.nio.ByteBuffer
-
     import scala.collection.mutable.HashMap
-
     import org.apache.cassandra.thrift
 
-    import Clients._
-    import Typeclasses._
-    import Types._
+    import Astyanax._
 
 
     def setKeyspace(cf: CF): Task[ThriftClient, Unit] =

@@ -2,8 +2,7 @@ package astyanax
 
 trait Types {
 
-    import Codecs._
-
+    import Astyanax._
 
     sealed trait ConsistencyLevel
     case object AnyConsistency extends ConsistencyLevel

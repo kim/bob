@@ -21,9 +21,8 @@ trait IO {
                                       }
     import org.apache.thrift.transport.{ TNonblockingSocket, TTransport }
 
-    import Clients._
+    import Astyanax._
     import ResourcePool._
-    import Typeclasses._
 
 
     case class CassandraConfig[C]
