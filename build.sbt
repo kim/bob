@@ -15,6 +15,7 @@ scalacOptions ++= Seq(
                   , "-unchecked"
                   , "-explaintypes"
                   , "-optimize"
-                  , "-Xlog-implicits"
+                  //, "-Xlog-implicits"
                   //, "-Ydebug"
+                  , "-Xlint"
                   )
