@@ -38,17 +38,17 @@ trait IO {
         )
     type MkCassandraState[C] = CassandraConfig => CassandraState[C]
 
-    type MonadCassandra[A, C] = State[CassandraState[C], A]
+    type MonadCassandra[C, A] = State[CassandraState[C], A]
 
     final case class Cassandra[C](private val s: CassandraState[C]) {
-        final def apply[A](m: MonadCassandra[A, C]): A = runWith(s)(m)
+        final def apply[A](m: MonadCassandra[C, A]): A = runWith(s)(m)
 
         override def finalize() = releaseCassandraState(s)
     }
 
 
-    def runCassandra[A, C]
-        (conf: CassandraConfig)(m: MonadCassandra[A, C])
+    def runCassandra[C, A]
+        (conf: CassandraConfig)(m: MonadCassandra[C, A])
         (implicit mk: MkCassandraState[C])
     : A = {
         val s = mk(conf)
@@ -56,7 +56,7 @@ trait IO {
         finally { releaseCassandraState(s) }
     }
 
-    def runWith[A, C](s: CassandraState[C])(m: MonadCassandra[A, C]): A =
+    def runWith[C, A](s: CassandraState[C])(m: MonadCassandra[C, A]): A =
         m.apply(s)._2
 
     def newCassandra[C](conf: CassandraConfig)(implicit mk: MkCassandraState[C])
@@ -64,7 +64,7 @@ trait IO {
         Cassandra(mk(conf))
 
     implicit
-    def lift[A, C](t: Task[Client[C], A]): MonadCassandra[Future[Result[A]], C] =
+    def lift[C, A](t: Task[Client[C], A]): MonadCassandra[C, Future[Result[A]]] =
         state(s => s -> s.exec.submit(callable(
             try   { withResource(s.pool) { c => t(c).eval(c).map(_._2) }}
             catch { case e => Result[A](Left(e)) }
