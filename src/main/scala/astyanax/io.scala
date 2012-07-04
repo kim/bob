@@ -26,7 +26,7 @@ trait IO {
     import Typeclasses._
 
 
-    case class CassandraConfig
+    case class CassandraConfig[C]
         ( hosts:           Seq[(String, Int)]
         , maxConns:        Int                = 50
         , connIdleTime:    (Long, TimeUnit)   = 500L -> TimeUnit.MILLISECONDS
@@ -37,7 +37,7 @@ trait IO {
         ( pool: Pool[Client[C]]
         , exec: ExecutorService
         )
-    type MkCassandraState[C] = CassandraConfig => CassandraState[C]
+    type MkCassandraState[C] = CassandraConfig[C] => CassandraState[C]
 
     type MonadCassandra[C, A] = State[CassandraState[C], A]
 
@@ -49,7 +49,7 @@ trait IO {
 
 
     def runCassandra[C, A]
-        (conf: CassandraConfig)(m: MonadCassandra[C, A])
+        (conf: CassandraConfig[C])(m: MonadCassandra[C, A])
         (implicit mk: MkCassandraState[C])
     : A = {
         val s = mk(conf)
@@ -60,9 +60,11 @@ trait IO {
     def runWith[C, A](s: CassandraState[C])(m: MonadCassandra[C, A]): A =
         m.apply(s)._2
 
-    def newCassandra[C](conf: CassandraConfig)(implicit mk: MkCassandraState[C])
+    def newCassandra[C](conf: CassandraConfig[C])(implicit mk: MkCassandraState[C])
     : Cassandra[C] =
         Cassandra(mk(conf))
+
+    def releaseCassandra[C](c: Cassandra[C]) = c.finalize()
 
     implicit
     def lift[C, A](t: Task[Client[C], A]): MonadCassandra[C, Future[Result[A]]] =
@@ -72,7 +74,7 @@ trait IO {
         )))
 
     implicit
-    def mkCassandraState(conf: CassandraConfig)
+    def mkCassandraState(conf: CassandraConfig[Thrift.AsyncClient])
     : CassandraState[Thrift.AsyncClient] = {
 
         @volatile var j = 0
@@ -98,7 +100,7 @@ trait IO {
     }
 
     private[this]
-    def releaseCassandraState(s: CassandraState[_]) {
+    def releaseCassandraState[C](s: CassandraState[C]) {
         s.exec.shutdown()
         destroyAll(s.pool)
     }

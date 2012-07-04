@@ -2,13 +2,15 @@ package astyanax
 
 object Example extends App {
 
+    import org.apache.cassandra.thrift.{ Cassandra => Thrift }
+
     import Api._
     import Codecs._
     import Types._
     import Typeclasses._
     import IO._
 
-    val Conf = CassandraConfig(Seq("localhost" -> 9160))
+    val Conf = CassandraConfig[Thrift.AsyncClient](Seq("localhost" -> 9160))
     val Cf   = CounterColumnFamily[String, Long](
       "Counters"
     , "ByHour_p_o_t"
@@ -57,7 +59,7 @@ object Example extends App {
       e  => println("ERROR: " + e)
     , xs => xs.map(x => { println(x); x.map(show) })
     )
-    cass.finalize()
+    releaseCassandra(cass) // must call this
 }
 
 
