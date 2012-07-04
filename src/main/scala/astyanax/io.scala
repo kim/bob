@@ -27,9 +27,10 @@ trait IO {
 
 
     case class CassandraConfig
-        ( hosts:        Seq[(String, Int)]
-        , maxConns:     Int                = 50
-        , connIdleTime: (Long, TimeUnit)   = 500L -> TimeUnit.MILLISECONDS
+        ( hosts:           Seq[(String, Int)]
+        , maxConns:        Int                = 50
+        , connIdleTime:    (Long, TimeUnit)   = 500L -> TimeUnit.MILLISECONDS
+        , selectorThreads: Int                = 1
         )
 
     case class CassandraState[C]
@@ -73,11 +74,16 @@ trait IO {
     implicit
     def mkCassandraState(conf: CassandraConfig)
     : CassandraState[Thrift.AsyncClient] = {
-        val mgr = new TAsyncClientManager // TODO: support multiple selector threads
-        val addrs = Stream.continually(conf.hosts).flatten.iterator
-        val newClient = (_:Unit) => {
-            val (h, p) = addrs.next
-            ThriftClient(h, p, mgr)
+
+        @volatile var j = 0
+        def nextMgr = { j = (j + 1) % conf.selectorThreads; j }
+        val mgrs = (0 until conf.selectorThreads).map(_ => new TAsyncClientManager)
+
+        @volatile var i = 0
+        def nextClient = { i = (i + 1) % conf.hosts.size; i }
+        val newClient = (_: Unit) => {
+            val (h, p) = conf.hosts(nextClient)
+            ThriftClient(h, p, mgrs(nextMgr))
         }
 
         val pool = createPool[Client[Thrift.AsyncClient]](
