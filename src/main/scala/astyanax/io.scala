@@ -2,9 +2,7 @@ package astyanax
 
 trait IO {
 
-    import java.util.concurrent.{ ArrayBlockingQueue
-                                , BlockingQueue
-                                , Callable
+    import java.util.concurrent.{ Callable
                                 , Executors
                                 , ExecutorService
                                 , Future
