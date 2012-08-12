@@ -2,14 +2,8 @@ package astyanax
 
 object ResourcePool {
 
-    import java.util.{ Date
-                     , Timer
-                     , TimerTask
-                     }
-    import java.util.concurrent.{ ArrayBlockingQueue
-                                , BlockingQueue
-                                , TimeUnit
-                                }
+    import java.util.{ Date, Timer, TimerTask }
+    import java.util.concurrent.{ ArrayBlockingQueue, BlockingQueue, TimeUnit }
     import java.util.concurrent.atomic.AtomicInteger
 
     import scala.collection.JavaConversions._
@@ -25,6 +19,7 @@ object ResourcePool {
 
     final case class LocalPool[A]
         ( entries: BlockingQueue[Entry[A]]
+        , inUse:   AtomicInteger
         )
 
     sealed case class Pool[A]
@@ -55,7 +50,10 @@ object ResourcePool {
             sys.error("invalid idle time " + idleTime)
 
         val pools = (0 until numStripes) map { _ =>
-          LocalPool(new ArrayBlockingQueue[Entry[A]](maxResources))
+          LocalPool(
+            new ArrayBlockingQueue[Entry[A]](maxResources)
+          , new AtomicInteger(0)
+          )
         }
         val reaper = {
           val t = new Timer(true)
@@ -86,15 +84,24 @@ object ResourcePool {
     def takeResource[A](pool: Pool[A]): (A, LocalPool[A]) = {
         val local = pool.localPools(
             Thread.currentThread.getId.hashCode % pool.numStripes)
-        val entry = Option(local.entries.poll()).map(_ entry)
-                        .getOrElse(pool.create())
-        entry -> local
+        val entry = Option(local.entries.poll()) orElse {
+                        if (local.inUse.get >= pool.maxResources)
+                            Some(local.entries.take())
+                        else {
+                            local.inUse.incrementAndGet()
+                            try   { Some(Entry(pool.create(), new Date)) }
+                            catch { case e => local.inUse.decrementAndGet(); throw e }
+                        }
+                    } map (_ entry)
+
+        entry.get -> local
     }
 
     def putResource[A](localPool: LocalPool[A], r: A): Unit =
         localPool.entries.offer(Entry(r, new Date))
 
     def destroyResource[A](pool: Pool[A], localPool: LocalPool[A], r: A) {
+        localPool.inUse.set(0)
         localPool.entries.remove(r)
         pool.destroy(r)
     }
@@ -102,6 +109,7 @@ object ResourcePool {
     def destroyAll[A](pool: Pool[A]) {
         pool.localPools.flatMap { local =>
             val e = local.entries.iterator.toIterable
+            local.inUse.addAndGet(-e.size)
             local.entries.removeAll(e)
             e.map(_ entry)
         }.foreach(e => try { pool.destroy(e) } catch { case _ => () })
@@ -120,8 +128,10 @@ object ResourcePool {
 
         pools.flatMap { pool =>
             val (stale, fresh) = pool.entries.partition(isStale)
-            if (stale.size > 0)
+            if (stale.size > 0) {
+                pool.inUse.addAndGet(-stale.size)
                 pool.entries.retainAll(fresh)
+            }
             stale.map(_ entry)
         }.foreach(e => try { destroy(e) } catch { case _ => () })
     }
