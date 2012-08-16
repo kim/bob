@@ -1,4 +1,4 @@
-package astyanax
+package bob
 
 trait Codecs {
 

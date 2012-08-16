@@ -1,11 +1,11 @@
-package astyanax
+package bob
 
 object Example extends App {
 
     import java.util.concurrent.Executors
     import org.apache.cassandra.thrift.{ Cassandra => Thrift }
 
-    import Astyanax._
+    import Bob._
 
 
     val Conf = CassandraConfig[Thrift.AsyncClient](

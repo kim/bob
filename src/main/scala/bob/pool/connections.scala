@@ -1,4 +1,4 @@
-package astyanax.pool
+package bob.pool
 
 trait HostConnectionPool[C] {
     def withConnection[X](act: C => X): X

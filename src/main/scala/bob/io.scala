@@ -1,4 +1,4 @@
-package astyanax
+package bob
 
 trait IO {
 
@@ -19,7 +19,7 @@ trait IO {
                                       }
     import org.apache.thrift.transport.{ TNonblockingSocket, TTransport }
 
-    import Astyanax._
+    import Bob._
     import pool.HostConnectionPool
     import pool.HostConnectionPool._
     import pool.ResourcePool._

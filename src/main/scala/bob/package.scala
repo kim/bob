@@ -1,6 +1,6 @@
-package object astyanax {
+package object bob {
 
-    object Astyanax
+    object Bob
         extends Api
         with    Clients
         with    Codecs

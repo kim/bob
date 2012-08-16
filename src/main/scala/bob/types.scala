@@ -1,8 +1,8 @@
-package astyanax
+package bob
 
 trait Types {
 
-    import Astyanax._
+    import Bob._
 
     sealed trait ConsistencyLevel
     case object AnyConsistency extends ConsistencyLevel

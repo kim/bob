@@ -1,4 +1,4 @@
-package astyanax
+package bob
 
 trait Api {
 
@@ -6,7 +6,7 @@ trait Api {
     import scala.collection.mutable.HashMap
     import org.apache.cassandra.thrift
 
-    import Astyanax._
+    import Bob._
 
 
     def setKeyspace(cf: CF): Task[ThriftClient, Unit] =

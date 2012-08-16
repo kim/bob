@@ -1,4 +1,4 @@
-package astyanax.pool
+package bob.pool
 
 object ResourcePool {
 
