@@ -29,20 +29,36 @@ trait Typeclasses {
     }
 
 
+    case class Latency(l: Long, t: Long)
+    object Latency {
+        def apply(): Latency =
+            Latency(0, System.currentTimeMillis)
+
+        def apply(old: Latency): Latency = {
+            val t = System.currentTimeMillis
+            old.copy(l = old.l + (t - old.t), t = t)
+        }
+
+        def apply(last: Long): Latency = {
+            val t = System.currentTimeMillis
+            Latency(t - last, t)
+        }
+    }
     // basically an Either monad, encapsulates the response (`A`), or any errors
-    case class Result[A](value: Either[Throwable, A]) {
+    case class Result[A](value: Either[Throwable, A], latency: Latency) {
         def map[B](f: A => B): Result[B] =
             flatMap(x => Right(f(x)))
 
         def flatMap[B](f: A => Result[B]): Result[B] =
             value match {
-                case Left(x)  => Left(x)
-                case Right(x) => f(x)
+                case Left(x)  => Result(Left(x), Latency(latency))
+                case Right(x) => val y = f(x); y.copy(latency = Latency(y.latency))
             }
     }
 
     implicit
-    def eitherToResult[A](e: Either[Throwable, A]): Result[A] = Result(e)
+    def eitherToResult[A](e: Either[Throwable, A]): Result[A] =
+        Result(e, Latency())
 
     implicit
     def resultToEither[A](r: Result[A]): Either[Throwable, A] = r.value
@@ -66,7 +82,7 @@ trait Typeclasses {
         stateT[({type λ[α]=Promise[S, α]})#λ, S, A](c => promise(f(c)(c)))
 
     def task[S, A](f: => A): Task[S, A] =
-        task(_ => promise(Result(Right(f))))
+        task(_ => promise(Result(Right(f), Latency())))
 
     def barrier[S]
         ( timeout: (Long, TimeUnit)
@@ -80,7 +96,7 @@ trait Typeclasses {
                      else
                          Right(())
 
-            promise(Result(r))
+            promise(Result(r, Latency(t2 - t1, t2)))
         }
 
     // since we're wrapping the async API, when running a `Task`, we'll get back
@@ -144,12 +160,10 @@ trait Typeclasses {
         def eval(s: S)(implicit m: Functor[M]): M[A] =
             apply(s) map (_._2)
 
-        def map[B](f: A => B)(implicit m: Functor[M])
-        : StateT[M, S, B] =
+        def map[B](f: A => B)(implicit m: Functor[M]): StateT[M, S, B] =
             stateT(s => apply(s) map { case (s1,a) => s1 -> f(a) })
 
-        def flatMap[B](f: A => StateT[M, S, B])(implicit m: Bind[M])
-        : StateT[M, S, B] =
+        def flatMap[B](f: A => StateT[M, S, B])(implicit m: Bind[M]): StateT[M, S, B] =
             stateT(apply(_) >>= (_ match { case (s1,a) => f(a)(s1) }))
     }
 

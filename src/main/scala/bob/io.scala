@@ -69,10 +69,11 @@ trait IO {
 
     implicit
     def lift[C, A](t: Task[Client[C], A]): MonadCassandra[C, Future[Result[A]]] =
-        state(s => s -> s.exec.submit(callable(
+        state(s => s -> s.exec.submit(callable {
+            val t1 = System.nanoTime
             try   { s.pool.withConnection { c => t(c).eval(c).map(_._2) }}
-            catch { case e => Result[A](Left(e)) }
-        )))
+            catch { case e => Result[A](Left(e), Latency(t1)) }
+        }))
 
     implicit
     def mkCassandraState(conf: CassandraConfig[Thrift.AsyncClient])

@@ -42,12 +42,7 @@ object Example extends App {
     } yield y :: z :: Nil
 
 
-    val res = runCassandra(Conf) {
-        for {
-            a <- r
-            b <- s
-        } yield a :: b :: Nil
-    }
+    val res = runCassandra(Conf) { for (a <- r; b <- s) yield a :: b :: Nil }
     println("run cassandra monad:")
     println(res.get)
 
@@ -58,8 +53,10 @@ object Example extends App {
     println(cass(r).get)
     cass(s).get.fold(
       e  => println("ERROR: " + e)
-    , xs => xs.map(x => { println(x); x.map(show) })
+    , xs => xs.map(x => { println("x: " + x); x.map(show) })
     )
+
+    println(runCassandra(Conf) { for(b <- s) yield b } get)
     releaseCassandra(cass) // must call this
 }
 
