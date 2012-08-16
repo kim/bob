@@ -834,7 +834,7 @@ trait Api {
                           p put Right(x.getResult.asInstanceOf[B])
                       case x: Cassandra.AsyncClient.set_cql_version_call =>
                           p put Right(x.getResult.asInstanceOf[B])
-                      case x => sys.error("wtf?")
+                      case x => sys.error("wtf?: " + x)
                   }}
                   catch { case e => p put Left(e) }
                 }

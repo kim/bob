@@ -2,18 +2,22 @@ package astyanax
 
 object Example extends App {
 
+    import java.util.concurrent.Executors
     import org.apache.cassandra.thrift.{ Cassandra => Thrift }
 
     import Astyanax._
 
 
-    val Conf = CassandraConfig[Thrift.AsyncClient](Seq("localhost" -> 9160))
+    val Conf = CassandraConfig[Thrift.AsyncClient](
+                 Seq("localhost" -> 9160)
+               , _ => Executors.newCachedThreadPool
+               )
     val Cf   = CounterColumnFamily[String, Long](
-      "Counters"
-    , "ByHour_p_o_t"
-    , Utf8Codec
-    , LongCodec
-    )
+                 "Counters"
+               , "ByHour_p_o_t"
+               , Utf8Codec
+               , LongCodec
+               )
 
     // a simple sequence of actions, intended to show how the computation stops
     // after the first failed action

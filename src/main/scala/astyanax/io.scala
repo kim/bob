@@ -20,18 +20,23 @@ trait IO {
     import org.apache.thrift.transport.{ TNonblockingSocket, TTransport }
 
     import Astyanax._
-    import ResourcePool._
+    import pool.HostConnectionPool
+    import pool.HostConnectionPool._
+    import pool.ResourcePool._
 
+
+    type MkExecutor = Unit => ExecutorService
 
     case class CassandraConfig[C]
         ( hosts:           Seq[(String, Int)]
-        , maxConns:        Int                = 50
-        , connIdleTime:    (Long, TimeUnit)   = 500L -> TimeUnit.MILLISECONDS
-        , selectorThreads: Int                = 1
+        , mkExecutor:      MkExecutor
+        , maxConns:        Int              = 50
+        , connIdleTime:    (Long, TimeUnit) = 500L -> TimeUnit.MILLISECONDS
+        , selectorThreads: Int              = 1
         )
 
     case class CassandraState[C]
-        ( pool: Pool[Client[C]]
+        ( pool: HostConnectionPool[Client[C]]
         , exec: ExecutorService
         )
     type MkCassandraState[C] = CassandraConfig[C] => CassandraState[C]
@@ -58,48 +63,39 @@ trait IO {
         m.apply(s)._2
 
     def newCassandra[C](conf: CassandraConfig[C])(implicit mk: MkCassandraState[C])
-    : Cassandra[C] =
-        Cassandra(mk(conf))
+    : Cassandra[C] = Cassandra(mk(conf))
 
     def releaseCassandra[C](c: Cassandra[C]) = c.finalize()
 
     implicit
     def lift[C, A](t: Task[Client[C], A]): MonadCassandra[C, Future[Result[A]]] =
         state(s => s -> s.exec.submit(callable(
-            try   { withResource(s.pool) { c => t(c).eval(c).map(_._2) }}
+            try   { s.pool.withConnection { c => t(c).eval(c).map(_._2) }}
             catch { case e => Result[A](Left(e)) }
         )))
 
     implicit
     def mkCassandraState(conf: CassandraConfig[Thrift.AsyncClient])
     : CassandraState[Thrift.AsyncClient] = {
-
-        @volatile var j = 0
-        def nextMgr = { j = (j + 1) % conf.selectorThreads; j }
-        val mgrs = (0 until conf.selectorThreads).map(_ => new TAsyncClientManager)
-
-        @volatile var i = 0
-        def nextClient = { i = (i + 1) % conf.hosts.size; i }
-        val newClient = (_: Unit) => {
-            val (h, p) = conf.hosts(nextClient)
-            ThriftClient(h, p, mgrs(nextMgr))
+        val mgrs = Stream.continually(
+          (0 until conf.selectorThreads).map(_ => new TAsyncClientManager)
+        ).flatten
+        val pools = Map() ++ conf.hosts.zip(mgrs).map { case (hp@(h,p),mgr) =>
+            hp -> createPool[ThriftClient]( _ => ThriftClient(h,p,mgr)
+                                          , _ close ()
+                                          , 1
+                                          , conf.connIdleTime
+                                          , conf.maxConns
+                                          )
         }
 
-        val pool = createPool[Client[Thrift.AsyncClient]](
-          newClient
-        , _.close()
-        , conf.hosts.size
-        , conf.connIdleTime
-        , conf.maxConns
-        )
-
-        CassandraState(pool, Executors.newCachedThreadPool)
+        CassandraState(RandomPool(pools), conf.mkExecutor())
     }
 
     private[this]
     def releaseCassandraState[C](s: CassandraState[C]) {
         s.exec.shutdown()
-        destroyAll(s.pool)
+        s.pool.destroy()
     }
 
     private[this]
