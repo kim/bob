@@ -1,10 +1,8 @@
 package object bob {
 
     object Bob
-        extends Api
-        with    Clients
+        extends Cassandra
         with    Codecs
-        with    IO
         with    Types
         with    Typeclasses
 }

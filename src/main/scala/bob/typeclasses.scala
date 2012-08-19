@@ -3,6 +3,7 @@ package bob
 trait Typeclasses {
 
     import java.util.concurrent.{ TimeUnit, TimeoutException }
+    import Util._
 
 
     trait Functor[F[_]] {
@@ -28,22 +29,6 @@ trait Typeclasses {
         val value = a
     }
 
-
-    case class Latency(l: Long, t: Long)
-    object Latency {
-        def apply(): Latency =
-            Latency(0, System.currentTimeMillis)
-
-        def apply(old: Latency): Latency = {
-            val t = System.currentTimeMillis
-            old.copy(l = old.l + (t - old.t), t = t)
-        }
-
-        def apply(last: Long): Latency = {
-            val t = System.currentTimeMillis
-            Latency(t - last, t)
-        }
-    }
     // basically an Either monad, encapsulates the response (`A`), or any errors
     case class Result[A](value: Either[Throwable, A], latency: Latency) {
         def map[B](f: A => B): Result[B] =
@@ -96,7 +81,7 @@ trait Typeclasses {
                      else
                          Right(())
 
-            promise(Result(r, Latency(t2 - t1, t2)))
+            promise(Result(r, Latency(t2 - t1, Timestamp(t2))))
         }
 
     // since we're wrapping the async API, when running a `Task`, we'll get back

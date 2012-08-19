@@ -1,8 +1,8 @@
-package bob
+package bob.thrift
 
-trait Clients {
 
-    import org.apache.cassandra.thrift.{ Cassandra => Thrift }
+trait ClientInstances {
+
     import org.apache.thrift.async.TAsyncClientManager
     import org.apache.thrift.protocol.{ TBinaryProtocol
                                       , TProtocol
@@ -10,18 +10,15 @@ trait Clients {
                                       }
     import org.apache.thrift.transport.{ TNonblockingSocket, TTransport }
 
+    import bob.Bob._
 
-    trait Client[A] {
-        def runWith[B](f: A => B): B
-        def close()
-    }
 
-    type ThriftClient = Client[Thrift.AsyncClient]
+    type ThriftClient = Client[AsyncClient]
 
     def ThriftClient(host: String, port: Int, mgr: TAsyncClientManager)
     : ThriftClient = new ThriftClient {
 
-        def runWith[B](f: Thrift.AsyncClient => B): B = {
+        def runWith[B](f: AsyncClient => B): B = {
             if (thrift.hasError)
                 throw thrift.getError
             val r = f(thrift)
@@ -33,7 +30,7 @@ trait Clients {
         def close() { sock.close() }
 
         private[this]
-        lazy val thrift = new Thrift.AsyncClient(factory, mgr, sock)
+        lazy val thrift = new AsyncClient(factory, mgr, sock)
 
         private[this]
         lazy val sock = new TNonblockingSocket(host, port)
@@ -45,8 +42,3 @@ trait Clients {
         }
     }
 }
-
-object Clients extends Clients
-
-
-// vim: set ts=4 sw=4 et:

@@ -2,13 +2,13 @@ package bob
 
 object Example extends App {
 
-    import java.util.concurrent.Executors
-    import org.apache.cassandra.thrift.{ Cassandra => Thrift }
+    import java.util.concurrent.{ Executors, Future }
 
     import Bob._
+    import thrift._
 
 
-    val Conf = CassandraConfig[Thrift.AsyncClient](
+    val Conf = CassandraConfig[AsyncClient](
                  Seq("localhost" -> 9160)
                , _ => Executors.newCachedThreadPool
                )

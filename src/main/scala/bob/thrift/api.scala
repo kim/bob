@@ -1,12 +1,11 @@
-package bob
+package bob.thrift
 
 trait Api {
 
     import java.nio.ByteBuffer
     import scala.collection.mutable.HashMap
-    import org.apache.cassandra.thrift
 
-    import Bob._
+    import bob.Bob._
 
 
     def setKeyspace(cf: CF): Task[ThriftClient, Unit] =
@@ -524,13 +523,12 @@ trait Api {
 
     object Thrift {
 
-        import java.nio.ByteBuffer
-
         import scala.collection.JavaConversions._
 
         import org.apache.cassandra.thrift
         import org.apache.thrift.async._
 
+        import bob.Bob._
         import Internal._
 
 
@@ -735,7 +733,6 @@ trait Api {
             mkTask(_.set_cql_version(v, _))
     }
 
-
     private[this]
     object Internal {
 
@@ -745,18 +742,25 @@ trait Api {
         import scala.collection.JavaConversions._
         import scala.collection.JavaConverters._
 
-        import org.apache.cassandra.thrift.Cassandra
+        import org.apache.cassandra.{ thrift => cass }
+        import cass.{ AuthenticationRequest => CassAuthReq
+                    , Mutation => CassMutation
+                    }
+        import cass.Cassandra.AsyncClient
+        import cass.Cassandra.AsyncClient._
         import org.apache.thrift.async._
 
+        import bob.Util._
 
-        type TracedResult[A] = (SyncVar[Result[A]], Long)
+
+        type TracedResult[A] = (SyncVar[Result[A]], Timestamp)
 
         implicit
-        def mkTask[A](f: (Cassandra.AsyncClient, TracedResult[A]) => Unit)
+        def mkTask[A](f: (AsyncClient, TracedResult[A]) => Unit)
         : Task[ThriftClient, A] =
             task { c =>
                 val res = new SyncVar[Result[A]]
-                c.runWith(f(_, new TracedResult(res, System.currentTimeMillis)))
+                c.runWith(f(_, new TracedResult(res, now())))
                 promise(res.get)
             }
 
@@ -773,71 +777,71 @@ trait Api {
                       // interface of `TAsyncMethodCall`, but not declared in
                       // the base class, so generated methods (which exist even
                       // for `void` results) don't inherit
-                      case x: Cassandra.AsyncClient.login_call =>
+                      case x: login_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.get_call =>
+                      case x: get_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.set_keyspace_call =>
+                      case x: set_keyspace_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.get_slice_call =>
+                      case x: get_slice_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.get_count_call =>
+                      case x: get_count_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.multiget_slice_call =>
+                      case x: multiget_slice_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.multiget_count_call =>
+                      case x: multiget_count_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.get_range_slices_call =>
+                      case x: get_range_slices_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.get_paged_slice_call =>
+                      case x: get_paged_slice_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.insert_call =>
+                      case x: insert_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.add_call =>
+                      case x: add_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.remove_call =>
+                      case x: remove_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.remove_counter_call =>
+                      case x: remove_counter_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.batch_mutate_call =>
+                      case x: batch_mutate_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.truncate_call =>
+                      case x: truncate_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.describe_schema_versions_call =>
+                      case x: describe_schema_versions_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.describe_keyspaces_call =>
+                      case x: describe_keyspaces_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.describe_cluster_name_call =>
+                      case x: describe_cluster_name_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.describe_version_call =>
+                      case x: describe_version_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.describe_partitioner_call =>
+                      case x: describe_partitioner_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.describe_snitch_call =>
+                      case x: describe_snitch_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.describe_keyspace_call =>
+                      case x: describe_keyspace_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.describe_splits_call =>
+                      case x: describe_splits_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.system_add_column_family_call =>
+                      case x: system_add_column_family_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.system_drop_column_family_call =>
+                      case x: system_drop_column_family_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.system_add_keyspace_call =>
+                      case x: system_add_keyspace_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.system_drop_keyspace_call =>
+                      case x: system_drop_keyspace_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.system_update_keyspace_call =>
+                      case x: system_update_keyspace_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.system_update_column_family_call =>
+                      case x: system_update_column_family_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.execute_cql_query_call =>
+                      case x: execute_cql_query_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.prepare_cql_query_call =>
+                      case x: prepare_cql_query_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.execute_prepared_cql_query_call =>
+                      case x: execute_prepared_cql_query_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
-                      case x: Cassandra.AsyncClient.set_cql_version_call =>
+                      case x: set_cql_version_call =>
                           put (Right(x.getResult.asInstanceOf[B]))
                       case x => sys.error("wtf?: " + x)
                   }}
@@ -851,19 +855,16 @@ trait Api {
         import java.util.{ Map => JMap, List => JList }
         implicit
         def mutationMapToJava
-            ( mm: Map[ByteBuffer,Map[String,Seq[thrift.Mutation]]]
+            ( mm: Map[ByteBuffer,Map[String,Seq[CassMutation]]]
             )
-        : JMap[ByteBuffer,JMap[String,JList[thrift.Mutation]]] =
+        : JMap[ByteBuffer,JMap[String,JList[CassMutation]]] =
             mm.mapValues(_.mapValues(_.asJava).asJava).asJava
 
         implicit
-        def AuthReq(username: String, password: String)
-        : thrift.AuthenticationRequest =
-            new thrift.AuthenticationRequest(Map(username -> password))
+        def AuthReq(username: String, password: String): CassAuthReq =
+            new CassAuthReq(Map(username -> password))
     }
 }
-
-object Api extends Api
 
 
 // vim: set ts=4 sw=4 et:

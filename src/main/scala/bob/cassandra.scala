@@ -1,6 +1,7 @@
 package bob
 
-trait IO {
+
+trait Cassandra {
 
     import java.util.concurrent.{ Callable
                                 , Executors
@@ -9,20 +10,9 @@ trait IO {
                                 , TimeUnit
                                 }
 
-    import scala.collection.JavaConversions._
-
-    import org.apache.cassandra.thrift.{ Cassandra => Thrift }
-    import org.apache.thrift.async.TAsyncClientManager
-    import org.apache.thrift.protocol.{ TBinaryProtocol
-                                      , TProtocol
-                                      , TProtocolFactory
-                                      }
-    import org.apache.thrift.transport.{ TNonblockingSocket, TTransport }
-
     import Bob._
+    import Util._
     import pool.HostConnectionPool
-    import pool.HostConnectionPool._
-    import pool.ResourcePool._
 
 
     type MkExecutor = Unit => ExecutorService
@@ -70,28 +60,10 @@ trait IO {
     implicit
     def lift[C, A](t: Task[Client[C], A]): MonadCassandra[C, Future[Result[A]]] =
         state(s => s -> s.exec.submit(callable {
-            val t1 = System.nanoTime
+            val t1 = now()
             try   { s.pool.withConnection { c => t(c).eval(c).map(_._2) }}
             catch { case e => Result[A](Left(e), Latency(t1)) }
         }))
-
-    implicit
-    def mkCassandraState(conf: CassandraConfig[Thrift.AsyncClient])
-    : CassandraState[Thrift.AsyncClient] = {
-        val mgrs = Stream.continually(
-          (0 until conf.selectorThreads).map(_ => new TAsyncClientManager)
-        ).flatten
-        val pools = Map() ++ conf.hosts.zip(mgrs).map { case (hp@(h,p),mgr) =>
-            hp -> createPool[ThriftClient]( _ => ThriftClient(h,p,mgr)
-                                          , _ close ()
-                                          , 1
-                                          , conf.connIdleTime
-                                          , conf.maxConns
-                                          )
-        }
-
-        CassandraState(RandomPool(pools), conf.mkExecutor())
-    }
 
     private[this]
     def releaseCassandraState[C](s: CassandraState[C]) {
@@ -102,8 +74,6 @@ trait IO {
     private[this]
     def callable[A](f: => A): Callable[A] = new Callable[A] { def call = f }
 }
-
-object IO extends IO
 
 
 // vim: set ts=4 sw=4 et:

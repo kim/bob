@@ -4,6 +4,12 @@ trait Types {
 
     import Bob._
 
+
+    trait Client[A] {
+        def runWith[B](f: A => B): B
+        def close()
+    }
+
     sealed trait ConsistencyLevel
     case object AnyConsistency extends ConsistencyLevel
     case object One            extends ConsistencyLevel
