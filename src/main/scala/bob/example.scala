@@ -6,10 +6,12 @@ object Example extends App {
 
     import Bob._
     import thrift._
+    import pool.HostConnectionPool._
 
 
     val Conf = CassandraConfig[AsyncClient, Future](
                  Seq("localhost" -> 9160)
+               , RoundRobinPool
                , _ => Executors.newFixedThreadPool(
                           Runtime.getRuntime.availableProcessors)
                )

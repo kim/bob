@@ -22,11 +22,11 @@ package object thrift extends Api with ClientInstances {
                                           , _ close ()
                                           , 1
                                           , conf.connIdleTime
-                                          , conf.maxConns
+                                          , conf.maxConnsPerHost
                                           )
         }
 
-        CassandraState(RandomPool(pools), conf.mkExecutor())
+        CassandraState(conf.mkConnPool(pools), conf.mkThreadPool())
     }
 }
 

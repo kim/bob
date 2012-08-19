@@ -8,9 +8,13 @@ trait Cassandra {
     import Bob._
     import Util._
     import pool.HostConnectionPool
+    import pool.HostConnectionPool.Host
+    import pool.ResourcePool.Pool
 
 
     type MkThreadPool[F[_]] = Unit => ThreadPool[F]
+
+    type MkConnPool[C] = Map[Host, Pool[C]] => HostConnectionPool[C]
 
     type MkCassandraState[C, F[_]] = CassandraConfig[C,F] => CassandraState[C,F]
 
@@ -18,8 +22,9 @@ trait Cassandra {
 
     case class CassandraConfig[C, F[_]]
         ( hosts:           Seq[(String, Int)]
-        , mkExecutor:      MkThreadPool[F]
-        , maxConns:        Int              = 50
+        , mkConnPool:      MkConnPool[Client[C]]
+        , mkThreadPool:    MkThreadPool[F]
+        , maxConnsPerHost: Int              = 50
         , connIdleTime:    (Long, TimeUnit) = 500L -> TimeUnit.MILLISECONDS
         , selectorThreads: Int              = 1
         )
