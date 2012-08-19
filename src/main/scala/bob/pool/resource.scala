@@ -115,6 +115,15 @@ object ResourcePool {
         }.foreach(e => try { pool.destroy(e) } catch { case _ => () })
     }
 
+    def numAllocated[A](pool: Pool[A]): Int =
+        pool.localPools.map(_.inUse.get).sum
+
+    def numActive[A](pool: Pool[A]): Int =
+        pool.localPools.map(_.entries.size).sum
+
+    def remainingCapacity[A](pool: Pool[A]): Int =
+        (pool.maxResources * pool.localPools.size) - numAllocated(pool)
+
     private[this]
     def reap[A]
       ( destroy:  DestroyResource[A]
