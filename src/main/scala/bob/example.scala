@@ -8,9 +8,10 @@ object Example extends App {
     import thrift._
 
 
-    val Conf = CassandraConfig[AsyncClient](
+    val Conf = CassandraConfig[AsyncClient, Future](
                  Seq("localhost" -> 9160)
-               , _ => Executors.newCachedThreadPool
+               , _ => Executors.newFixedThreadPool(
+                          Runtime.getRuntime.availableProcessors)
                )
     val Cf   = CounterColumnFamily[String, Long](
                  "Counters"

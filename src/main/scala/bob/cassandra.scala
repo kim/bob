@@ -3,62 +3,72 @@ package bob
 
 trait Cassandra {
 
-    import java.util.concurrent.{ Callable
-                                , Executors
-                                , ExecutorService
-                                , Future
-                                , TimeUnit
-                                }
+    import java.util.concurrent.TimeUnit
 
     import Bob._
     import Util._
     import pool.HostConnectionPool
 
 
-    type MkExecutor = Unit => ExecutorService
+    type MkThreadPool[F[_]] = Unit => ThreadPool[F]
 
-    case class CassandraConfig[C]
+    type MkCassandraState[C, F[_]] = CassandraConfig[C,F] => CassandraState[C,F]
+
+    type MonadCassandra[C, A, F[_]] = State[CassandraState[C,F], A]
+
+    case class CassandraConfig[C, F[_]]
         ( hosts:           Seq[(String, Int)]
-        , mkExecutor:      MkExecutor
+        , mkExecutor:      MkThreadPool[F]
         , maxConns:        Int              = 50
         , connIdleTime:    (Long, TimeUnit) = 500L -> TimeUnit.MILLISECONDS
         , selectorThreads: Int              = 1
         )
 
-    case class CassandraState[C]
+    case class CassandraState[C, F[_]]
         ( pool: HostConnectionPool[Client[C]]
-        , exec: ExecutorService
+        , exec: ThreadPool[F]
         )
-    type MkCassandraState[C] = CassandraConfig[C] => CassandraState[C]
 
-    type MonadCassandra[C, A] = State[CassandraState[C], A]
-
-    final case class Cassandra[C](private val s: CassandraState[C]) {
-        final def apply[A](m: MonadCassandra[C, A]): A = runWith(s)(m)
+    final case class Cassandra[C, F[_]](private val s: CassandraState[C, F]) {
+        final def apply[A](m: MonadCassandra[C, A, F]): A = runWith(s)(m)
 
         override def finalize() = releaseCassandraState(s)
     }
 
 
-    def runCassandra[C, A]
-        (conf: CassandraConfig[C])(m: MonadCassandra[C, A])
-        (implicit mk: MkCassandraState[C])
+    def runCassandra[C, A, F[_]]
+        ( conf: CassandraConfig[C, F]
+        )
+        ( m: MonadCassandra[C, A, F]
+        )
+        ( implicit mk: MkCassandraState[C, F]
+        )
     : A = {
         val s = mk(conf)
         try     { runWith(s)(m) }
         finally { releaseCassandraState(s) }
     }
 
-    def runWith[C, A](s: CassandraState[C])(m: MonadCassandra[C, A]): A =
+    def runWith[C, A, F[_]]
+        ( s: CassandraState[C, F]
+        )
+        ( m: MonadCassandra[C, A, F]
+        )
+    : A =
         m.apply(s)._2
 
-    def newCassandra[C](conf: CassandraConfig[C])(implicit mk: MkCassandraState[C])
-    : Cassandra[C] = Cassandra(mk(conf))
+    def newCassandra[C, F[_]]
+        ( conf: CassandraConfig[C, F]
+        )
+        ( implicit mk: MkCassandraState[C,F]
+        )
+    : Cassandra[C, F] = Cassandra(mk(conf))
 
-    def releaseCassandra[C](c: Cassandra[C]) = c.finalize()
+    def releaseCassandra[C, F[_]](c: Cassandra[C, F]) = c.finalize()
 
     implicit
-    def lift[C, A](t: Task[Client[C], A]): MonadCassandra[C, Future[Result[A]]] =
+    def lift[C, A, F[_]](t: Task[Client[C], A])
+    : MonadCassandra[C, F[Result[A]], F] =
         state(s => s -> s.exec.submit(callable {
             val t1 = now()
             try   { s.pool.withConnection { c => t(c).eval(c).map(_._2) }}
@@ -66,13 +76,10 @@ trait Cassandra {
         }))
 
     private[this]
-    def releaseCassandraState[C](s: CassandraState[C]) {
+    def releaseCassandraState[C, F[_]](s: CassandraState[C, F]) {
         s.exec.shutdown()
         s.pool.destroy()
     }
-
-    private[this]
-    def callable[A](f: => A): Callable[A] = new Callable[A] { def call = f }
 }
 
 

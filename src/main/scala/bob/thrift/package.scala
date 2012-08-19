@@ -12,8 +12,8 @@ package object thrift extends Api with ClientInstances {
     type AsyncClient = Cassandra.AsyncClient
 
     implicit
-    def mkCassandraState(conf: CassandraConfig[AsyncClient])
-    : CassandraState[AsyncClient] = {
+    def mkCassandraState[F[_]](conf: CassandraConfig[AsyncClient, F])
+    : CassandraState[AsyncClient, F] = {
         val mgrs = Stream.continually(
           (0 until conf.selectorThreads).map(_ => new TAsyncClientManager)
         ).flatten
