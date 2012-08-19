@@ -43,6 +43,7 @@ object Util {
         }
     }
 
+    implicit
     def callable[A](f: => A): Callable[A] = new Callable[A] { def call = f }
 }
 
