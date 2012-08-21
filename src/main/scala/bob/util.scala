@@ -13,14 +13,15 @@ object Util {
 
     def now(): Timestamp = Timestamp.now
 
-    case class Latency(l: Long, t: Timestamp)
+    case class Latency(l: Long, t: Timestamp) {
+        def +(othr: Latency): Latency = copy(l + othr.l, now())
+    }
     object Latency {
-        def apply(): Latency =
-            Latency(0, now())
+        def apply(): Latency = Latency(0, now())
 
         def apply(old: Latency): Latency = {
             val t = now()
-            old.copy(l = old.l + (t.value - old.t.value), t = t)
+            old.copy(old.l + (t.value - old.t.value), t)
         }
 
         def apply(last: Timestamp): Latency = {

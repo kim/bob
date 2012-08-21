@@ -37,7 +37,7 @@ trait Typeclasses {
         def flatMap[B](f: A => Result[B]): Result[B] =
             value match {
                 case Left(x)  => Result(Left(x), Latency(latency))
-                case Right(x) => val y = f(x); y.copy(latency = Latency(y.latency))
+                case Right(x) => val y = f(x); y.copy(latency = latency + y.latency)
             }
     }
 
