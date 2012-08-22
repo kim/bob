@@ -3,10 +3,12 @@ package bob.pool
 object ResourcePool {
 
     import java.util.{ Date, Timer, TimerTask }
-    import java.util.concurrent.{ BlockingDeque, LinkedBlockingDeque, TimeUnit }
+    import java.util.concurrent.{ BlockingDeque, LinkedBlockingDeque }
     import java.util.concurrent.atomic.AtomicInteger
 
     import scala.collection.JavaConversions._
+
+    import bob.Util._
 
 
     type CreateResource[A]  = Unit => A
@@ -26,7 +28,7 @@ object ResourcePool {
         ( create:       CreateResource[A]
         , destroy:      DestroyResource[A]
         , numStripes:   Int
-        , idleTime:     (Long, TimeUnit)
+        , idleTime:     Duration
         , maxResources: Int
         , localPools:   IndexedSeq[LocalPool[A]]
         )
@@ -36,7 +38,7 @@ object ResourcePool {
         ( create:       CreateResource[A]
         , destroy:      DestroyResource[A]
         , numStripes:   Int
-        , idleTime:     (Long, TimeUnit)
+        , idleTime:     Duration
         , maxResources: Int
         )
     : Pool[A] = {
@@ -44,9 +46,7 @@ object ResourcePool {
             sys.error("invalid stripe count " + numStripes)
         if (maxResources < 1)
             sys.error("invalid maximum resource count " + maxResources)
-
-        val idle = toMillis(idleTime)
-        if (idle < 500)
+        if (idleTime.milliseconds < 500)
             sys.error("invalid idle time " + idleTime)
 
         val pools = (0 until numStripes) map { _ =>
@@ -57,8 +57,8 @@ object ResourcePool {
         val reaper = {
           val t = new Timer(true)
           t.schedule( new TimerTask { def run() = reap(destroy, idleTime, pools) }
-                    , idle
-                    , idle
+                    , idleTime.milliseconds
+                    , idleTime.milliseconds
                     )
           t
         }
@@ -128,13 +128,13 @@ object ResourcePool {
     private[this]
     def reap[A]
       ( destroy:  DestroyResource[A]
-      , idleTime: (Long, TimeUnit)
+      , idleTime: Duration
       , pools:    IndexedSeq[LocalPool[A]]
       )
     : Unit = {
-        val now  = System.currentTimeMillis
-        val idle = toMillis(idleTime)
-        def isStale(e: Entry[A]): Boolean = now - e.lastUse.getTime > idle
+        val now = System.currentTimeMillis
+        def isStale(e: Entry[A]): Boolean =
+            now - e.lastUse.getTime > idleTime.milliseconds
 
         pools.flatMap { pool =>
             val (stale, fresh) = pool.entries.partition(isStale)
@@ -145,10 +145,6 @@ object ResourcePool {
             stale.map(_ entry)
         }.foreach(e => try { destroy(e) } catch { case _ => () })
     }
-
-    private[this]
-    def toMillis(idleTime: (Long, TimeUnit)): Long =
-        idleTime match { case (i, unit) => unit.toMillis(i) }
 }
 
 

@@ -3,8 +3,6 @@ package bob
 
 trait Cassandra {
 
-    import java.util.concurrent.TimeUnit
-
     import Bob._
     import Util._
     import pool.HostConnectionPool
@@ -23,9 +21,9 @@ trait Cassandra {
         ( hosts:           Seq[Host]
         , mkConnPool:      MkConnPool[Client[C]]
         , mkThreadPool:    MkThreadPool[F]
-        , maxConnsPerHost: Int              = 50
-        , connIdleTime:    (Long, TimeUnit) = 500L -> TimeUnit.MILLISECONDS
-        , selectorThreads: Int              = 1
+        , maxConnsPerHost: Int      = 50
+        , connIdleTime:    Duration = 500.milliseconds
+        , selectorThreads: Int      = 1
         )
 
     case class CassandraState[C, F[_]]

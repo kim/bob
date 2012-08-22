@@ -2,7 +2,7 @@ package bob
 
 trait Typeclasses {
 
-    import java.util.concurrent.{ TimeUnit, TimeoutException }
+    import java.util.concurrent.TimeoutException
     import Util._
 
 
@@ -70,13 +70,13 @@ trait Typeclasses {
         task(_ => promise(Result(Right(f), Latency())))
 
     def barrier[S]
-        ( timeout: (Long, TimeUnit)
+        ( timeout: Duration
         , t1:      Long = System.currentTimeMillis
         )
     : Task[S, Unit] =
         task { c =>
             val t2 = System.currentTimeMillis
-            val r  = if (t2 - t1 > timeout._2.toMillis(timeout._1))
+            val r  = if (t2 - t1 > timeout.milliseconds)
                          Left(new TimeoutException())
                      else
                          Right(())

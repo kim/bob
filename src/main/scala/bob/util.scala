@@ -33,6 +33,33 @@ object Util {
         }
     }
 
+    case class Duration(value: Long, unit: TimeUnit) {
+        def days:         Long = unit toDays    value
+        def hours:        Long = unit toHours   value
+        def microseconds: Long = unit toMicros  value
+        def milliseconds: Long = unit toMillis  value
+        def minutes:      Long = unit toMinutes value
+        def nanoseconds:  Long = unit toNanos   value
+        def seconds:      Long = unit toSeconds value
+    }
+
+    final class LongDuration(value: Long) {
+        import TimeUnit._
+
+        def days:         Duration = duration(DAYS)
+        def hours:        Duration = duration(HOURS)
+        def microseconds: Duration = duration(MICROSECONDS)
+        def milliseconds: Duration = duration(MILLISECONDS)
+        def minutes:      Duration = duration(MINUTES)
+        def nanoseconds:  Duration = duration(NANOSECONDS)
+        def seconds:      Duration = duration(SECONDS)
+
+        private[this]
+        def duration(unit: TimeUnit): Duration = Duration(value, unit)
+    }
+
+    implicit def longToDuration(l: Long): LongDuration = new LongDuration(l)
+
 
     trait ThreadPool[F[_]] {
         def submit[A](c: Callable[A]): F[A]
@@ -40,8 +67,9 @@ object Util {
     }
 
     object ThreadPool {
-        implicit def JavaThreadPool(x: ExecutorService)
-        : ThreadPool[Future] = new ThreadPool[Future] {
+        implicit
+        def JavaThreadPool(x: ExecutorService): ThreadPool[Future]
+        = new ThreadPool[Future] {
             def submit[A](c: Callable[A]) = x submit c
             def shutdown() = x.shutdown()
         }
