@@ -5,6 +5,9 @@ object Util {
     import java.util.concurrent.{ Callable, ExecutorService, Future, TimeUnit }
 
 
+    type Host = (String, Int)
+
+
     case class Timestamp(value: Long)
     object Timestamp {
         def apply(): Timestamp = Timestamp(System.currentTimeMillis)

@@ -8,7 +8,6 @@ trait Cassandra {
     import Bob._
     import Util._
     import pool.HostConnectionPool
-    import pool.HostConnectionPool.Host
     import pool.ResourcePool.Pool
 
 
@@ -21,7 +20,7 @@ trait Cassandra {
     type MonadCassandra[C, A, F[_]] = State[CassandraState[C,F], A]
 
     case class CassandraConfig[C, F[_]]
-        ( hosts:           Seq[(String, Int)]
+        ( hosts:           Seq[Host]
         , mkConnPool:      MkConnPool[Client[C]]
         , mkThreadPool:    MkThreadPool[F]
         , maxConnsPerHost: Int              = 50

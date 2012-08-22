@@ -4,7 +4,7 @@ import ResourcePool._
 import bob.Bob.Result
 import bob.Util._
 
-abstract class HostConnectionPool[C](pools: Map[(String, Int), Pool[C]]) {
+abstract class HostConnectionPool[C](pools: Map[Host, Pool[C]]) {
     def withConnection[X](act: C => Result[X]): Result[X]
 
     def destroy() =
@@ -23,8 +23,6 @@ abstract class HostConnectionPool[C](pools: Map[(String, Int), Pool[C]]) {
 object HostConnectionPool extends HostConnectionPools
 
 trait HostConnectionPools {
-
-    type Host = (String, Int)
 
     // randomly select the host connection. may block.
     def RandomPool[C](pools: Map[Host, Pool[C]]): HostConnectionPool[C]
