@@ -3,7 +3,7 @@ package bob.pool
 object ResourcePool {
 
     import java.util.{ Date, Timer, TimerTask }
-    import java.util.concurrent.{ ArrayBlockingQueue, BlockingQueue, TimeUnit }
+    import java.util.concurrent.{ BlockingDeque, LinkedBlockingDeque, TimeUnit }
     import java.util.concurrent.atomic.AtomicInteger
 
     import scala.collection.JavaConversions._
@@ -18,7 +18,7 @@ object ResourcePool {
         )
 
     final case class LocalPool[A]
-        ( entries: BlockingQueue[Entry[A]]
+        ( entries: BlockingDeque[Entry[A]]
         , inUse:   AtomicInteger
         )
 
@@ -50,18 +50,16 @@ object ResourcePool {
             sys.error("invalid idle time " + idleTime)
 
         val pools = (0 until numStripes) map { _ =>
-          LocalPool(
-            new ArrayBlockingQueue[Entry[A]](maxResources)
-          , new AtomicInteger(0)
-          )
+          LocalPool( new LinkedBlockingDeque[Entry[A]]()
+                   , new AtomicInteger(0)
+                   )
         }
         val reaper = {
           val t = new Timer(true)
-          t.schedule(
-            new TimerTask { def run() = reap(destroy, idleTime, pools) }
-          , idle
-          , idle
-          )
+          t.schedule( new TimerTask { def run() = reap(destroy, idleTime, pools) }
+                    , idle
+                    , idle
+                    )
           t
         }
 
@@ -77,7 +75,7 @@ object ResourcePool {
             putResource(local, res)
             ret
         } catch {
-          case e => destroyResource(pool, local, res); throw e
+            case e => destroyResource(pool, local, res); throw e
         }
     }
 
@@ -98,10 +96,10 @@ object ResourcePool {
     }
 
     def putResource[A](localPool: LocalPool[A], r: A): Unit =
-        localPool.entries.offer(Entry(r, new Date))
+        localPool.entries.push(Entry(r, new Date))
 
     def destroyResource[A](pool: Pool[A], localPool: LocalPool[A], r: A) {
-        localPool.inUse.set(0)
+        localPool.inUse.decrementAndGet()
         localPool.entries.remove(r)
         pool.destroy(r)
     }
