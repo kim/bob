@@ -11,7 +11,7 @@ object Example extends App {
 
     val Conf = CassandraConfig[AsyncClient, Future](
                  Seq("localhost" -> 9160)
-               , RoundRobinPool
+               , LatencyAwarePool
                , _ => Executors.newFixedThreadPool(
                           Runtime.getRuntime.availableProcessors)
                )

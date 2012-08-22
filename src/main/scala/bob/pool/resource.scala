@@ -124,6 +124,9 @@ object ResourcePool {
     def remainingCapacity[A](pool: Pool[A]): Int =
         (pool.maxResources * pool.localPools.size) - numAllocated(pool)
 
+    def exhausted[A](pool: Pool[A]): Boolean =
+        (pool.maxResources * pool.localPools.size) - numActive(pool) == 0
+
     private[this]
     def reap[A]
       ( destroy:  DestroyResource[A]
