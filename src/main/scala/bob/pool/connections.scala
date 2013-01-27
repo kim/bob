@@ -65,6 +65,7 @@ trait HostConnectionPools {
                 .headOption
                 .orElse(sortedHosts.get.headOption)
                 .map(h =>
+                    // may block if pools(h) became exhausted by now
                     withResource(pools(h))(act) match {
                         case r@Result(Left(_), latency) =>
                             sample(h, latency.copy(l = latency.l * 2))

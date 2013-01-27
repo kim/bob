@@ -2,6 +2,8 @@ package bob
 
 object Example extends App {
 
+    // note: using eg. Guava's ListenableFuture will allow you to use bob in a
+    // non-blocking fashion
     import java.util.concurrent.{ Executors, Future }
 
     import Bob._
