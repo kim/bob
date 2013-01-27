@@ -74,9 +74,7 @@ object ResourcePool {
             val ret = act(res)
             putResource(local, res)
             ret
-        } catch {
-            case e => destroyResource(pool, local, res); throw e
-        }
+        } catch { case e => destroyResource(pool, local, res); throw e }
     }
 
     def takeResource[A](pool: Pool[A]): (A, LocalPool[A]) = {
@@ -94,6 +92,34 @@ object ResourcePool {
 
         entry.get -> local
     }
+
+    def tryWithResource[A, B](pool: Pool[A])(act: A => B): Option[B] =
+        tryTakeResource(pool) match {
+            case None => None
+            case Some((res, local)) =>
+                try {
+                    val ret = act(res)
+                    putResource(local, res)
+                    Some(ret)
+                } catch { case e => destroyResource(pool, local, res); throw e }
+        }
+
+    def tryTakeResource[A](pool: Pool[A]): Option[(A, LocalPool[A])] = {
+        val local = pool.localPools(
+            Thread.currentThread.getId.hashCode % pool.numStripes)
+        val entry = Option(local.entries.poll()) orElse {
+                        if (local.inUse.get >= pool.maxResources)
+                            None
+                        else {
+                            local.inUse.incrementAndGet()
+                            try   { Some(Entry(pool.create(), new Date)) }
+                            catch { case e => local.inUse.decrementAndGet(); throw e }
+                        }
+                    } map (_ entry)
+
+        entry map (_ -> local)
+    }
+
 
     def putResource[A](localPool: LocalPool[A], r: A): Unit =
         localPool.entries.push(Entry(r, new Date))
