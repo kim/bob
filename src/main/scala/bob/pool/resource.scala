@@ -34,13 +34,12 @@ object ResourcePool {
         )
 
 
-    def createPool[A]
-        ( create:       CreateResource[A]
-        , destroy:      DestroyResource[A]
-        , numStripes:   Int
-        , idleTime:     Duration
-        , maxResources: Int
-        )
+    def createPool[A]( create       : CreateResource[A]
+                     , destroy      : DestroyResource[A]
+                     , numStripes   : Int
+                     , idleTime     : Duration
+                     , maxResources : Int
+                     )
     : Pool[A] = {
         if (numStripes < 1)
             sys.error("invalid stripe count " + numStripes)
@@ -74,7 +73,10 @@ object ResourcePool {
             val ret = act(res)
             putResource(local, res)
             ret
-        } catch { case e => destroyResource(pool, local, res); throw e }
+        } catch { case e =>
+            destroyResource(pool, local, res)
+            throw e
+        }
     }
 
     def takeResource[A](pool: Pool[A]): (A, LocalPool[A]) = {
@@ -86,7 +88,10 @@ object ResourcePool {
                         else {
                             local.inUse.incrementAndGet()
                             try   { Some(Entry(pool.create(), new Date)) }
-                            catch { case e => local.inUse.decrementAndGet(); throw e }
+                            catch { case e =>
+                                local.inUse.decrementAndGet()
+                                throw e
+                            }
                         }
                     } map (_ entry)
 
@@ -101,7 +106,10 @@ object ResourcePool {
                     val ret = act(res)
                     putResource(local, res)
                     Some(ret)
-                } catch { case e => destroyResource(pool, local, res); throw e }
+                } catch { case e =>
+                    destroyResource(pool, local, res)
+                    throw e
+                }
         }
 
     def tryTakeResource[A](pool: Pool[A]): Option[(A, LocalPool[A])] = {
@@ -113,7 +121,10 @@ object ResourcePool {
                         else {
                             local.inUse.incrementAndGet()
                             try   { Some(Entry(pool.create(), new Date)) }
-                            catch { case e => local.inUse.decrementAndGet(); throw e }
+                            catch { case e =>
+                                local.inUse.decrementAndGet()
+                                throw e
+                            }
                         }
                     } map (_ entry)
 
@@ -152,11 +163,10 @@ object ResourcePool {
         (pool.maxResources * pool.localPools.size) - numActive(pool) == 0
 
     private[this]
-    def reap[A]
-      ( destroy:  DestroyResource[A]
-      , idleTime: Duration
-      , pools:    IndexedSeq[LocalPool[A]]
-      )
+    def reap[A]( destroy  : DestroyResource[A]
+               , idleTime : Duration
+               , pools    : IndexedSeq[LocalPool[A]]
+               )
     : Unit = {
         val now = System.currentTimeMillis
         def isStale(e: Entry[A]): Boolean =

@@ -4,6 +4,9 @@ import ResourcePool._
 import bob.Bob.Result
 import bob.Util._
 
+final case object NoHost        extends Exception("No host")
+final case object PoolExhausted extends Exception("Pool exhausted")
+
 abstract class HostConnectionPool[C](pools: Map[Host, Pool[C]]) {
     def withConnection[X](act: C => Result[X]): Result[X]
 
@@ -24,26 +27,31 @@ object HostConnectionPool extends HostConnectionPools
 
 trait HostConnectionPools {
 
-    // randomly select the host connection. may block.
+    // randomly select the host connection
     def RandomPool[C](pools: Map[Host, Pool[C]]): HostConnectionPool[C]
     = new HostConnectionPool[C](pools) {
         private[this] val ps = pools.values.toIndexedSeq
 
         def withConnection[X](act: C => Result[X]) =
-            withResource(ps(util.Random.nextInt(ps.size)))(act)
+            tryWithResource(ps(util.Random.nextInt(ps.size)))(act) match {
+                case Some(res) => res
+                case None      => Result(Left(PoolExhausted), Latency())
+            }
     }
 
-    // round-robin over the hosts. may block.
+    // round-robin over the hosts
     def RoundRobinPool[C](pools: Map[Host, Pool[C]]): HostConnectionPool[C]
     = new HostConnectionPool[C](pools) {
         private[this] val i = Stream.continually(pools.values).flatten.iterator
 
-        def withConnection[X](act: C => Result[X]) = withResource(i.next)(act)
+        def withConnection[X](act: C => Result[X]) =
+            tryWithResource(i.next)(act) match {
+                case Some(res) => res
+                case None      => Result(Left(PoolExhausted), Latency())
+            }
     }
 
-    // prefers hosts with low latencies, but skips to attempt resource
-    // acquisition if a pool is exhausted. may block only if all pools are
-    // exhausted.
+    // prefers hosts with low latencies
     //
     // note that the latency may be that of a series of sequential operations.
     // thus, the score may be skewed if actions are sporadically larger than
@@ -64,18 +72,18 @@ trait HostConnectionPools {
                 .dropWhile(h => pools.get(h).map(exhausted).getOrElse(true))
                 .headOption
                 .orElse(sortedHosts.get.headOption)
-                .map(h =>
-                    // may block if pools(h) became exhausted by now
-                    withResource(pools(h))(act) match {
-                        case r@Result(Left(_), latency) =>
+                .map(h => tryWithResource(pools(h))(act) match {
+                    case None      => Result[X](Left(PoolExhausted), Latency())
+                    case Some(res) => res match {
+                        case r @ Result(Left(_), latency) =>
                             sample(h, latency.copy(l = latency.l * 2))
                             r
-                        case r@Result(Right(_), latency) =>
+                        case r @ Result(Right(_), latency) =>
                             sample(h, latency)
                             r
                     }
-                )
-                .getOrElse(Result(Left(new Exception("No host")), Latency()))
+                })
+                .getOrElse(Result(Left(NoHost), Latency()))
 
         private[this]
         def sample(h: Host, l: Latency) =
@@ -119,3 +127,6 @@ trait HostConnectionPools {
         def compare(a: LatencyScore, b: LatencyScore) = a.score compare b.score
     }
 }
+
+
+// vim: set ts=4 sw=4 et:
